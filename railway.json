@@ -1,20 +1,30 @@
 {
-    "build": {
-        "env": "python",
-        "command": "pip install -r requirements.txt"
+  "build": {
+    "env": "python",
+    "command": "pip install -r requirements.txt"
+  },
+  "start": {
+    "command": "bash -lc \"python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}\""
+  },
+  "deploy": {
+    "healthcheckPath": "/health",
+    "restartPolicyType": "ON_FAILURE"
+  },
+  "envs": [
+    {
+      "key": "PORT",
+      "value": "8000",
+      "required": true
     },
-    "start": {
-        "command": "python main.py"
+    {
+      "key": "PYTHONUNBUFFERED",
+      "value": "1",
+      "required": false
     },
-    "deploy": {
-        "healthcheckPath": "/",
-        "restartPolicyType": "ON_FAILURE"
-    },
-    "envs": [
-        {
-            "key": "PORT",
-            "value": "8000",
-            "required": true
-        }
-    ]
+    {
+      "key": "ENV",
+      "value": "production",
+      "required": false
+    }
+  ]
 }
