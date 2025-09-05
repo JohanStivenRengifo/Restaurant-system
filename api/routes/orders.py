@@ -9,11 +9,16 @@ from models.schemas import (
     OrderResponse, OrderCreate, OrderUpdate, OrderItemCreate, OrderItemResponse,
     ErrorResponse
 )
+from pydantic import BaseModel
 from services.order_service import OrderService
 from patterns.singleton import logger, db_singleton
 from models.entities import OrderStatus, OrderType
 
 router = APIRouter(prefix="/orders", tags=["Pedidos"])
+
+# Schema para actualizar estado
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatus
 
 # Inyectar dependencias
 def get_order_service() -> OrderService:
@@ -118,8 +123,8 @@ async def create_order(
                500: {"model": ErrorResponse, "description": "Error interno del servidor"}
            })
 async def update_order(
+    order: OrderUpdate,
     order_id: UUID = Path(..., description="ID único del pedido"),
-    order: OrderUpdate = ...,
     service: OrderService = Depends(get_order_service)
 ):
     """Actualiza un pedido existente"""
@@ -184,8 +189,8 @@ async def delete_order(
                 500: {"model": ErrorResponse, "description": "Error interno del servidor"}
             })
 async def add_order_item(
+    item: OrderItemCreate,
     order_id: UUID = Path(..., description="ID único del pedido"),
-    item: OrderItemCreate = ...,
     service: OrderService = Depends(get_order_service)
 ):
     """Añade un elemento a un pedido existente"""
@@ -236,13 +241,13 @@ async def get_order_items(
                  500: {"model": ErrorResponse, "description": "Error interno del servidor"}
              })
 async def update_order_status(
+    status_update: OrderStatusUpdate,
     order_id: UUID = Path(..., description="ID único del pedido"),
-    new_status: OrderStatus = ...,
     service: OrderService = Depends(get_order_service)
 ):
     """Actualiza el estado de un pedido"""
     try:
-        updated_order = await service.update_order_status(order_id, new_status)
+        updated_order = await service.update_order_status(order_id, status_update.status)
         if not updated_order:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

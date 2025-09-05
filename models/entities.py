@@ -174,6 +174,7 @@ class Order(BaseEntity):
     table_id: Optional[str] = None
     order_type_id: Optional[str] = None
     status_id: Optional[str] = None
+    status: Optional[str] = None  # Campo directo para el status
     subtotal: float = 0.0
     tax_amount: float = 0.0
     discount_amount: float = 0.0

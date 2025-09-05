@@ -40,9 +40,9 @@ class OrderService:
             # Convertir a OrderResponse
             return [
                 OrderResponse(
-                    id=UUID(order.id),
+                    id=order.id if isinstance(order.id, UUID) else UUID(order.id),
                     order_number=order.order_number,
-                    customer_id=UUID(order.customer_id),
+                    customer_id=UUID(order.customer_id) if order.customer_id else None,
                     table_id=UUID(order.table_id) if order.table_id else None,
                     status="pending",  # Por ahora hardcodeado, se puede implementar después
                     order_type="dine_in",  # Por ahora hardcodeado, se puede implementar después
@@ -71,9 +71,9 @@ class OrderService:
                 return None
             # Convertir a OrderResponse
             return OrderResponse(
-                id=UUID(order.id),
+                id=order.id if isinstance(order.id, UUID) else UUID(order.id),
                 order_number=order.order_number,
-                customer_id=UUID(order.customer_id),
+                customer_id=UUID(order.customer_id) if order.customer_id else None,
                 table_id=UUID(order.table_id) if order.table_id else None,
                 status="pending",  # Por ahora hardcodeado, se puede implementar después
                 order_type="dine_in",  # Por ahora hardcodeado, se puede implementar después
@@ -99,7 +99,7 @@ class OrderService:
             order_entity = Order(
                 id=str(uuid4()),
                 order_number=f"ORD-{int(get_bogota_now().timestamp())}",
-                customer_id=str(order.customer_id),
+                customer_id=str(order.customer_id) if order.customer_id else None,
                 table_id=str(order.table_id) if order.table_id else None,
                 order_type_id=None,  # Por ahora None, se puede implementar después
                 status_id=None,  # Por ahora None, se puede implementar después
@@ -115,9 +115,9 @@ class OrderService:
                 raise Exception("Error al crear pedido en la DB")
             # Convertir a OrderResponse
             return OrderResponse(
-                id=UUID(created_order.id),
+                id=created_order.id if isinstance(created_order.id, UUID) else UUID(created_order.id),
                 order_number=created_order.order_number,
-                customer_id=UUID(created_order.customer_id),
+                customer_id=UUID(created_order.customer_id) if created_order.customer_id else None,
                 table_id=UUID(created_order.table_id) if created_order.table_id else None,
                 status="pending",  # Por ahora hardcodeado, se puede implementar después
                 order_type="dine_in",  # Por ahora hardcodeado, se puede implementar después
@@ -143,17 +143,24 @@ class OrderService:
                 "special_instructions": order.special_instructions,
                 "updated_at": format_bogota_timestamp()
             }
+            
+            # Agregar campos opcionales si están presentes
+            if hasattr(order, 'customer_id') and order.customer_id is not None:
+                update_data["customer_id"] = str(order.customer_id)
+            if hasattr(order, 'table_id') and order.table_id is not None:
+                update_data["table_id"] = str(order.table_id)
+            # Nota: order_type y status no existen en la tabla actual, se manejan por separado
             updated_order = self.order_repo.update(str(order_id), update_data)
             if not updated_order:
                 return None
             # Convertir a OrderResponse
             return OrderResponse(
-                id=UUID(updated_order.id),
+                id=updated_order.id if isinstance(updated_order.id, UUID) else UUID(updated_order.id),
                 order_number=updated_order.order_number,
-                customer_id=UUID(updated_order.customer_id),
+                customer_id=UUID(updated_order.customer_id) if updated_order.customer_id else None,
                 table_id=UUID(updated_order.table_id) if updated_order.table_id else None,
-                status="pending",  # Por ahora hardcodeado, se puede implementar después
-                order_type="dine_in",  # Por ahora hardcodeado, se puede implementar después
+                status=getattr(updated_order, 'status', 'pending') or 'pending',  # Usar el status del pedido actualizado
+                order_type=getattr(updated_order, 'order_type', 'dine_in'),  # Usar el order_type del pedido actualizado
                 subtotal=updated_order.subtotal,
                 total_amount=updated_order.total_amount,
                 tax_amount=updated_order.tax_amount,
@@ -234,21 +241,26 @@ class OrderService:
             logger.log("error", f"Error al obtener elementos del pedido: {e}")
             raise
     
-    async def update_order_status(self, order_id: UUID, new_status: str) -> Optional[OrderResponse]:
+    async def update_order_status(self, order_id: UUID, new_status) -> Optional[OrderResponse]:
         """Actualiza el estado de un pedido"""
         try:
-            logger.log("info", f"Actualizando estado del pedido: {order_id} a {new_status}")
+            # Convertir el status a string si es un enum
+            if hasattr(new_status, 'value'):
+                status_str = new_status.value
+            else:
+                status_str = str(new_status)
+            logger.log("info", f"Actualizando estado del pedido: {order_id} a {status_str}")
             # Actualizar estado del pedido en la DB usando el repositorio
-            updated_order = self.order_repo.update_status(str(order_id), new_status)
+            updated_order = self.order_repo.update_status(str(order_id), status_str)
             if not updated_order:
                 return None
             # Convertir a OrderResponse
             return OrderResponse(
-                id=UUID(updated_order.id),
+                id=updated_order.id if isinstance(updated_order.id, UUID) else UUID(updated_order.id),
                 order_number=updated_order.order_number,
-                customer_id=UUID(updated_order.customer_id),
+                customer_id=UUID(updated_order.customer_id) if updated_order.customer_id else None,
                 table_id=UUID(updated_order.table_id) if updated_order.table_id else None,
-                status=new_status,  # Usar el nuevo estado
+                status=status_str,  # Usar el nuevo estado
                 order_type="dine_in",  # Por ahora hardcodeado, se puede implementar después
                 subtotal=updated_order.subtotal,
                 total_amount=updated_order.total_amount,

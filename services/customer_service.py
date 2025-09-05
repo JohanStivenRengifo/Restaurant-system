@@ -91,11 +91,11 @@ class CustomerService:
                 email=customer.email,
                 phone=customer.phone,
                 address=customer.address,
-                birth_date=str(customer.birth_date),  # Convertir a string
+                birth_date=str(customer.birth_date) if customer.birth_date else None,  # Convertir a string solo si existe
                 allergies=customer.allergies or [],
                 preferences=customer.preferences or {},
                 loyalty_points=0,
-                is_vip=False
+                is_vip=getattr(customer, 'is_vip', False)  # Usar is_vip del request
             )
             created_customer = self.customer_repo.create(customer_entity)
             if not created_customer:

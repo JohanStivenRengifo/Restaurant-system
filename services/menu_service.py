@@ -118,11 +118,17 @@ class MenuService:
     async def create_menu_item(self, item_data: MenuItemCreate) -> MenuItemResponse:
         """Crea un nuevo elemento del menú usando Factory pattern"""
         try:
-            # Usar Factory para validar y crear el elemento
-            menu_item = MenuItemFactory.create_menu_item(item_data.dict())
-            
             # Preparar datos para inserción
-            item_dict = menu_item.dict()
+            item_dict = item_data.dict()
+            
+            # Manejar category_id vacío o inválido
+            if not item_dict.get('category_id') or item_dict['category_id'] == "":
+                item_dict['category_id'] = None
+            elif item_dict['category_id'] is not None:
+                # Convertir UUID a string si existe
+                item_dict['category_id'] = str(item_dict['category_id'])
+            
+            # Generar ID y timestamps
             item_dict['id'] = str(uuid4())
             item_dict['created_at'] = format_bogota_timestamp()
             item_dict['updated_at'] = None
@@ -163,7 +169,12 @@ class MenuService:
             update_dict = item_data.dict(exclude_unset=True)
             update_dict['updated_at'] = format_bogota_timestamp()
             
-            return await self.repository.update_menu_item(item_id, update_dict)
+            # Convertir UUIDs a strings para evitar problemas de serialización
+            if 'category_id' in update_dict and update_dict['category_id'] is not None:
+                update_dict['category_id'] = str(update_dict['category_id'])
+            
+            # Convertir UUID a string para el repositorio
+            return await self.repository.update_menu_item(str(item_id), update_dict)
             
         except Exception as e:
             logger.log("error", f"Error al actualizar elemento del menú: {e}")
@@ -172,7 +183,8 @@ class MenuService:
     async def delete_menu_item(self, item_id: UUID) -> bool:
         """Elimina un elemento del menú"""
         try:
-            return await self.repository.delete_menu_item(item_id)
+            # Convertir UUID a string para el repositorio
+            return await self.repository.delete_menu_item(str(item_id))
         except Exception as e:
             logger.log("error", f"Error al eliminar elemento del menú: {e}")
             raise

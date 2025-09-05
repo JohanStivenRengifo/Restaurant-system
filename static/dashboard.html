@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍽️ Dashboard - Sistema de Restaurante</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css" rel="stylesheet">
+    <link href="/static/css/dashboard.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-utensils"></i>
+                <h1>Sistema de Restaurante</h1>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="refreshAllData()">
+                    <i class="fas fa-sync-alt"></i> Actualizar
+                </button>
+                <button class="btn btn-warning" onclick="populateWithSampleData()">
+                    <i class="fas fa-database"></i> Poblar Datos
+                </button>
+                <button class="btn btn-secondary" onclick="openApiDocs()">
+                    <i class="fas fa-book"></i> API Docs
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <nav class="nav">
+                <ul class="nav-list">
+                    <li class="nav-item active" data-section="overview">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Resumen</span>
+                    </li>
+                    <li class="nav-item" data-section="menu">
+                        <i class="fas fa-utensils"></i>
+                        <span>Menú</span>
+                    </li>
+                    <li class="nav-item" data-section="orders">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>Pedidos</span>
+                    </li>
+                    <li class="nav-item" data-section="customers">
+                        <i class="fas fa-users"></i>
+                        <span>Clientes</span>
+                    </li>
+                    <li class="nav-item" data-section="tables">
+                        <i class="fas fa-chair"></i>
+                        <span>Mesas</span>
+                    </li>
+                    <li class="nav-item" data-section="inventory">
+                        <i class="fas fa-boxes"></i>
+                        <span>Inventario</span>
+                    </li>
+                    <li class="nav-item" data-section="billing">
+                        <i class="fas fa-receipt"></i>
+                        <span>Facturación</span>
+                    </li>
+                    <li class="nav-item" data-section="reports">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Reportes</span>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Content Area -->
+        <div class="content">
+            <!-- Overview Section -->
+            <section id="overview" class="section active">
+                <div class="section-header">
+                    <h2>Resumen General</h2>
+                    <p>Vista general del sistema de restaurante</p>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-utensils"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="total-menu-items">-</h3>
+                            <p>Elementos del Menú</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="total-orders">-</h3>
+                            <p>Pedidos Activos</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="total-customers">-</h3>
+                            <p>Clientes Registrados</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-chair"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="available-tables">-</h3>
+                            <p>Mesas Disponibles</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <h3>Ventas por Día</h3>
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Elementos Populares</h3>
+                        <canvas id="popularItemsChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Menu Section -->
+            <section id="menu" class="section">
+                <div class="section-header">
+                    <h2>Gestión del Menú</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-primary" onclick="showCreateMenuItemModal()">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="refreshMenuData()">
+                            <i class="fas fa-sync"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="filters">
+                    <input type="text" id="menu-search" placeholder="Buscar elementos..." class="filter-input">
+                    <select id="category-filter" class="filter-select">
+                        <option value="">Todas las categorías</option>
+                    </select>
+                    <button class="btn btn-outline" onclick="applyMenuFilters()">Filtrar</button>
+                </div>
+
+                <!-- Menu Items Table -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Categoría</th>
+                                <th>Precio</th>
+                                <th>Disponible</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="menu-items-table">
+                            <tr>
+                                <td colspan="5" class="loading">Cargando elementos del menú...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Orders Section -->
+            <section id="orders" class="section">
+                <div class="section-header">
+                    <h2>Gestión de Pedidos</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-primary" onclick="showCreateOrderModal()">
+                            <i class="fas fa-plus"></i> Nuevo Pedido
+                        </button>
+                        <button class="btn btn-secondary" onclick="loadOrders()">
+                            <i class="fas fa-sync"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Order Status Filter -->
+                <div class="filters">
+                    <select id="order-status-filter" class="filter-select">
+                        <option value="">Todos los estados</option>
+                        <option value="pending">Pendiente</option>
+                        <option value="confirmed">Confirmado</option>
+                        <option value="preparing">Preparando</option>
+                        <option value="ready">Listo</option>
+                        <option value="delivered">Entregado</option>
+                        <option value="cancelled">Cancelado</option>
+                    </select>
+                    <button class="btn btn-outline" onclick="applyOrderFilters()">Filtrar</button>
+                </div>
+
+                <!-- Orders Table -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Cliente</th>
+                                <th>Mesa</th>
+                                <th>Estado</th>
+                                <th>Total</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table">
+                            <tr>
+                                <td colspan="6" class="loading">Cargando pedidos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Customers Section -->
+            <section id="customers" class="section">
+                <div class="section-header">
+                    <h2>Gestión de Clientes</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-primary" onclick="showCreateCustomerModal()">
+                            <i class="fas fa-plus"></i> Nuevo Cliente
+                        </button>
+                        <button class="btn btn-secondary" onclick="loadCustomers()">
+                            <i class="fas fa-sync"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Customer Search -->
+                <div class="filters">
+                    <input type="text" id="customer-search" placeholder="Buscar clientes..." class="filter-input">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="vip-only-filter">
+                        Solo VIP
+                    </label>
+                    <button class="btn btn-outline" onclick="applyCustomerFilters()">Filtrar</button>
+                </div>
+
+                <!-- Customers Table -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Teléfono</th>
+                                <th>VIP</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customers-table">
+                            <tr>
+                                <td colspan="5" class="loading">Cargando clientes...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Tables Section -->
+            <section id="tables" class="section">
+                <div class="section-header">
+                    <h2>Gestión de Mesas</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-primary" onclick="showCreateTableModal()">
+                            <i class="fas fa-plus"></i> Nueva Mesa
+                        </button>
+                        <button class="btn btn-secondary" onclick="loadTables()">
+                            <i class="fas fa-sync"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tables Grid -->
+                <div class="tables-grid" id="tables-grid">
+                    <div class="loading">Cargando mesas...</div>
+                </div>
+            </section>
+
+            <!-- Inventory Section -->
+            <section id="inventory" class="section">
+                <div class="section-header">
+                    <h2>Gestión de Inventario</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-primary" onclick="showCreateInventoryModal()">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="loadInventoryItems()">
+                            <i class="fas fa-sync"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Inventory Filters -->
+                <div class="filters">
+                    <select id="inventory-category-filter" class="filter-select">
+                        <option value="">Todas las categorías</option>
+                    </select>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="low-stock-filter">
+                        Solo stock bajo
+                    </label>
+                    <button class="btn btn-outline" onclick="applyInventoryFilters()">Filtrar</button>
+                </div>
+
+                <!-- Inventory Table -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Categoría</th>
+                                <th>Stock Actual</th>
+                                <th>Stock Mínimo</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table">
+                            <tr>
+                                <td colspan="6" class="loading">Cargando inventario...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Billing Section -->
+            <section id="billing" class="section">
+                <div class="section-header">
+                    <h2>Gestión de Facturación</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-primary" onclick="showCreateInvoiceModal()">
+                            <i class="fas fa-plus"></i> Nueva Factura
+                        </button>
+                        <button class="btn btn-secondary" onclick="loadInvoices()">
+                            <i class="fas fa-sync"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Billing Stats -->
+                <div class="billing-stats">
+                    <div class="stat-card">
+                        <h3 id="total-revenue">$0.00</h3>
+                        <p>Ingresos Totales</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="pending-payments">$0.00</h3>
+                        <p>Pagos Pendientes</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="paid-invoices">0</h3>
+                        <p>Facturas Pagadas</p>
+                    </div>
+                </div>
+
+                <!-- Invoices Table -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Cliente</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoices-table">
+                            <tr>
+                                <td colspan="6" class="loading">Cargando facturas...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Reports Section -->
+            <section id="reports" class="section">
+                <div class="section-header">
+                    <h2>Reportes y Análisis</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-primary" onclick="generateSalesReport()">
+                            <i class="fas fa-chart-line"></i> Reporte de Ventas
+                        </button>
+                        <button class="btn btn-primary" onclick="generateInventoryReport()">
+                            <i class="fas fa-boxes"></i> Reporte de Inventario
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Report Forms -->
+                <div class="report-forms">
+                    <div class="report-form">
+                        <h3>Reporte de Ventas</h3>
+                        <div class="form-group">
+                            <label>Fecha Inicio:</label>
+                            <input type="date" id="sales-start-date" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha Fin:</label>
+                            <input type="date" id="sales-end-date" class="form-input">
+                        </div>
+                        <button class="btn btn-primary" onclick="generateSalesReport()">Generar</button>
+                    </div>
+
+                    <div class="report-form">
+                        <h3>Reporte de Inventario</h3>
+                        <p>Genera un reporte del estado actual del inventario</p>
+                        <button class="btn btn-primary" onclick="generateInventoryReport()">Generar</button>
+                    </div>
+                </div>
+
+                <!-- Report Results -->
+                <div id="report-results" class="report-results" style="display: none;">
+                    <h3>Resultados del Reporte</h3>
+                    <div id="report-content"></div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Título del Modal</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Modal content will be inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button class="btn btn-primary" id="modal-save" onclick="saveModal()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Cargando...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="/static/js/sample-data.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+
+</html>

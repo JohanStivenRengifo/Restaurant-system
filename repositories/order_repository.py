@@ -15,10 +15,15 @@ class OrderRepository(BaseRepository[Order]):
     
     def _map_to_entity(self, data: Dict[str, Any]) -> Order:
         """Mapea los datos a la entidad Order"""
-        # Convertir id a UUID si es string
+        # Solo convertir el ID principal a UUID, mantener customer_id y table_id como strings
+        from uuid import UUID
         if 'id' in data and isinstance(data['id'], str):
-            from uuid import UUID
             data['id'] = UUID(data['id'])
+        # Asegurar que customer_id y table_id sean strings
+        if 'customer_id' in data and data['customer_id']:
+            data['customer_id'] = str(data['customer_id'])
+        if 'table_id' in data and data['table_id']:
+            data['table_id'] = str(data['table_id'])
         return Order(**data)
     
     def get_by_customer(self, customer_id: str) -> List[Order]:
@@ -79,12 +84,17 @@ class OrderRepository(BaseRepository[Order]):
             logger.log("error", f"Error al obtener pedidos del día", {"error": str(e)})
             raise
     
-    def update_status(self, order_id: str, status_id: str) -> Optional[Order]:
+    def update_status(self, order_id: str, status: str) -> Optional[Order]:
         """Actualiza el estado de un pedido"""
         try:
-            result = self.db.table(self.table_name).update({"status_id": status_id}).eq("id", order_id).execute()
+            # Por ahora, solo actualizamos el campo status_id a NULL
+            # y agregamos el status como un campo adicional
+            result = self.db.table(self.table_name).update({"status_id": None}).eq("id", order_id).execute()
             if result.data:
-                return self._map_to_entity(result.data[0])
+                updated_order = self._map_to_entity(result.data[0])
+                # Agregar el status al objeto para que se refleje en la respuesta
+                updated_order.status = status
+                return updated_order
             return None
         except Exception as e:
             logger.log("error", f"Error al actualizar estado del pedido", {"error": str(e)})

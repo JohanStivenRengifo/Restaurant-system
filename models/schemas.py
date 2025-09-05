@@ -94,7 +94,7 @@ class MenuItemBase(BaseModel):
 
 class MenuItemCreate(MenuItemBase):
     """Modelo para crear elementos del menú"""
-    category_id: str = Field(..., description="ID de la categoría")
+    category_id: Optional[str] = Field(None, description="ID de la categoría")
 
 class MenuItemUpdate(BaseModel):
     """Modelo para actualizar elementos del menú"""
@@ -113,7 +113,7 @@ class MenuItemUpdate(BaseModel):
 class MenuItemResponse(MenuItemBase):
     """Modelo de respuesta para elementos del menú"""
     id: UUID = Field(..., description="ID único del elemento")
-    category_id: UUID = Field(..., description="ID de la categoría")
+    category_id: Optional[UUID] = Field(None, description="ID de la categoría")
     created_at: datetime = Field(..., description="Fecha de creación")
     updated_at: Optional[datetime] = Field(None, description="Fecha de última actualización")
 
@@ -211,7 +211,7 @@ class OrderBase(BaseModel):
 
 class OrderCreate(OrderBase):
     """Modelo para crear pedidos"""
-    items: List[OrderItemCreate] = Field(..., min_items=1, description="Lista de elementos del pedido")
+    items: List[OrderItemCreate] = Field(default=[], description="Lista de elementos del pedido")
 
 class OrderUpdate(BaseModel):
     """Modelo para actualizar pedidos"""

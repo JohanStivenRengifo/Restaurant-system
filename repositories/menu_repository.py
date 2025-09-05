@@ -25,11 +25,11 @@ class MenuRepositoryInterface(ABC):
         pass
     
     @abstractmethod
-    async def update_menu_item(self, item_id: UUID, item_data: Dict[str, Any]) -> Optional[MenuItemResponse]:
+    async def update_menu_item(self, item_id: str, item_data: Dict[str, Any]) -> Optional[MenuItemResponse]:
         pass
     
     @abstractmethod
-    async def delete_menu_item(self, item_id: UUID) -> bool:
+    async def delete_menu_item(self, item_id: str) -> bool:
         pass
     
     @abstractmethod
@@ -150,10 +150,10 @@ class SupabaseMenuRepository(MenuRepositoryInterface):
             logger.log("error", f"Error en repositorio al crear elemento del menú: {e}")
             raise
     
-    async def update_menu_item(self, item_id: UUID, item_data: Dict[str, Any]) -> Optional[MenuItemResponse]:
+    async def update_menu_item(self, item_id: str, item_data: Dict[str, Any]) -> Optional[MenuItemResponse]:
         """Actualiza un elemento del menú"""
         try:
-            result = self.db.table('menu_items').update(item_data).eq('id', str(item_id)).execute()
+            result = self.db.table('menu_items').update(item_data).eq('id', item_id).execute()
             
             if not result.data:
                 return None
@@ -165,10 +165,10 @@ class SupabaseMenuRepository(MenuRepositoryInterface):
             logger.log("error", f"Error en repositorio al actualizar elemento del menú: {e}")
             raise
     
-    async def delete_menu_item(self, item_id: UUID) -> bool:
+    async def delete_menu_item(self, item_id: str) -> bool:
         """Elimina un elemento del menú"""
         try:
-            result = self.db.table('menu_items').delete().eq('id', str(item_id)).execute()
+            result = self.db.table('menu_items').delete().eq('id', item_id).execute()
             
             success = len(result.data) > 0
             if success:

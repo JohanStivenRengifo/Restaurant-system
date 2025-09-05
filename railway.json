@@ -1,0 +1,20 @@
+{
+    "build": {
+        "env": "python",
+        "command": "pip install -r requirements.txt"
+    },
+    "start": {
+        "command": "python main.py"
+    },
+    "deploy": {
+        "healthcheckPath": "/",
+        "restartPolicyType": "ON_FAILURE"
+    },
+    "envs": [
+        {
+            "key": "PORT",
+            "value": "8000",
+            "required": true
+        }
+    ]
+}

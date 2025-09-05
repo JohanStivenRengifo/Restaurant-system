@@ -161,6 +161,95 @@ app.add_middleware(RateLimitMiddleware)
 # Incluir todas las rutas modularizadas
 app.include_router(api_router)
 
+# Endpoint de salud simple
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    """Endpoint de salud simple"""
+    return {"status": "ok", "message": "Sistema de restaurante funcionando"}
+
+# Endpoint de datos de prueba para el dashboard
+@app.get("/api/v1/test-data", include_in_schema=False)
+async def get_test_data():
+    """Datos de prueba para el dashboard"""
+    return {
+        "menu_items": [
+            {
+                "id": "1",
+                "name": "Ensalada César",
+                "description": "Lechuga romana, crutones, queso parmesano",
+                "price": 12.99,
+                "category_name": "Entradas",
+                "available": True
+            },
+            {
+                "id": "2",
+                "name": "Pasta Carbonara",
+                "description": "Pasta con salsa carbonara y panceta",
+                "price": 18.50,
+                "category_name": "Platos Principales",
+                "available": True
+            }
+        ],
+        "orders": [
+            {
+                "id": "1",
+                "order_number": "ORD-001",
+                "customer_name": "Juan Pérez",
+                "table_number": 1,
+                "status": "preparing",
+                "total": 45.98
+            }
+        ],
+        "customers": [
+            {
+                "id": "1",
+                "first_name": "Juan",
+                "last_name": "Pérez",
+                "email": "juan@email.com",
+                "phone": "+1234567890",
+                "is_vip": True
+            }
+        ],
+        "tables": [
+            {
+                "id": "1",
+                "number": 1,
+                "capacity": 4,
+                "status": "available",
+                "zone": "Terraza"
+            },
+            {
+                "id": "2",
+                "number": 2,
+                "capacity": 2,
+                "status": "occupied",
+                "zone": "Interior"
+            }
+        ],
+        "categories": [
+            {
+                "id": "550e8400-e29b-41d4-a716-446655440001",
+                "name": "Entradas",
+                "description": "Aperitivos y entradas"
+            },
+            {
+                "id": "550e8400-e29b-41d4-a716-446655440002",
+                "name": "Platos Principales",
+                "description": "Platos principales del menú"
+            },
+            {
+                "id": "550e8400-e29b-41d4-a716-446655440003",
+                "name": "Postres",
+                "description": "Postres y dulces"
+            },
+            {
+                "id": "550e8400-e29b-41d4-a716-446655440004",
+                "name": "Bebidas",
+                "description": "Bebidas y refrescos"
+            }
+        ]
+    }
+
 # Montar archivos estáticos
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -189,10 +278,34 @@ async def original_docs():
     from fastapi.openapi.docs import get_swagger_ui_html
     return get_swagger_ui_html(openapi_url="/openapi.json", title="API Docs")
 
+# Endpoint del dashboard
+@app.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
+async def dashboard():
+    """Dashboard visual del sistema de restaurante"""
+    try:
+        with open("static/dashboard.html", "r", encoding="utf-8") as f:
+            content = f.read()
+            return HTMLResponse(content=content)
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="""
+            <html>
+                <head><title>Dashboard no encontrado</title></head>
+                <body>
+                    <h1>Dashboard no disponible</h1>
+                    <p>El archivo dashboard.html no se encontró en la carpeta static/</p>
+                    <a href="/docs">Ver documentación de la API</a>
+                </body>
+            </html>
+            """,
+            status_code=404
+        )
+
 
 if __name__ == "__main__":
     print("🍽️  Iniciando Sistema de Restaurante...")
     print("📱 API disponible en: http://localhost:8000")
+    print("📊 Dashboard visual en: http://localhost:8000/dashboard")
     print("📚 Documentación en: http://localhost:8000/docs")
     print("🌱 Para poblar con datos: POST /api/v1/seed")
     print("🔧 Configuración: GET /api/v1/config")
