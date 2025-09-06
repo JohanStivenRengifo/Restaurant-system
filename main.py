@@ -303,18 +303,24 @@ async def dashboard():
 
 
 if __name__ == "__main__":
+    import os
+    
+    # Obtener puerto de Railway o usar el por defecto
+    port = int(os.environ.get("PORT", settings.port))
+    host = os.environ.get("HOST", settings.host)
+    
     print("🍽️  Iniciando Sistema de Restaurante...")
-    print("📱 API disponible en: http://localhost:8000")
-    print("📊 Dashboard visual en: http://localhost:8000/dashboard")
-    print("📚 Documentación en: http://localhost:8000/docs")
+    print(f"📱 API disponible en: http://{host}:{port}")
+    print(f"📊 Dashboard visual en: http://{host}:{port}/dashboard")
+    print(f"📚 Documentación en: http://{host}:{port}/docs")
     print("🌱 Para poblar con datos: POST /api/v1/seed")
     print("🔧 Configuración: GET /api/v1/config")
     print("❤️  Health Check: GET /health")
     
     uvicorn.run(
         "main:app",
-        host=settings.host,
-        port=settings.port,
+        host=host,
+        port=port,
         reload=settings.debug,
         log_level="info"
     )
