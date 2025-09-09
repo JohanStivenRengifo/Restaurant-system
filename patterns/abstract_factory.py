@@ -3,7 +3,7 @@ Patrón Abstract Factory para crear familias de objetos relacionados
 """
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List
-from models.entities import Order, OrderItem, Invoice, Payment, Reservation
+from models.entities import Order, OrderItem, Invoice, Payment, Reservation, Customer
 
 
 class OrderSystemFactory(ABC):

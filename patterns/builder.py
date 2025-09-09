@@ -38,8 +38,8 @@ class OrderBuilder:
         return self
     
     def add_order_item(self, menu_item_id: str, quantity: int, 
-                      unit_price: float, customizations: List[Dict[str, Any]] = None,
-                      special_instructions: str = None) -> 'OrderBuilder':
+                      unit_price: float, customizations: Optional[List[Dict[str, Any]]] = None,
+                      special_instructions: Optional[str] = None) -> 'OrderBuilder':
         """Añade un elemento al pedido"""
         item = {
             "menu_item_id": menu_item_id,
@@ -141,7 +141,7 @@ class CustomerBuilder:
         self._customer_data: Dict[str, Any] = {}
     
     def set_personal_info(self, first_name: str, last_name: str, 
-                         email: str = None, phone: str = None) -> 'CustomerBuilder':
+                         email: Optional[str] = None, phone: Optional[str] = None) -> 'CustomerBuilder':
         """Establece información personal"""
         self._customer_data.update({
             "first_name": first_name,
@@ -190,7 +190,7 @@ class InvoiceBuilder:
     def __init__(self):
         self._invoice_data: Dict[str, Any] = {}
     
-    def set_order_info(self, order_id: str, customer_id: str = None) -> 'InvoiceBuilder':
+    def set_order_info(self, order_id: str, customer_id: Optional[str] = None) -> 'InvoiceBuilder':
         """Establece información del pedido"""
         self._invoice_data.update({
             "order_id": order_id,

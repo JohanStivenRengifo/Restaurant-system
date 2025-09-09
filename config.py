@@ -9,17 +9,17 @@ class Settings(BaseSettings):
     """Configuración de la aplicación"""
     
     # Supabase
-    next_public_supabase_url: str
-    next_public_supabase_anon_key: str
+    next_public_supabase_url: str = "https://dummy.supabase.co"
+    next_public_supabase_anon_key: str = "dummy-key"
     
     # JWT
-    secret_key: str
+    secret_key: str = "your-secret-key-change-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
     # Application
-    debug: bool = True
-    host: str = "0.0.0.0"
+    debug: bool = False  # Cambiado a False para producción
+    host: str = "0.0.0.0" 
     port: int = 8000
     
     # Timezone

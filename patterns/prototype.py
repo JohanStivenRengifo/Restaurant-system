@@ -2,9 +2,10 @@
 Patrón Prototype para clonar objetos existentes
 """
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from copy import deepcopy
-from models.entities import MenuItem, Order, Customer, Invoice
+from uuid import uuid4
+from models.entities import MenuItem, Order, Customer, Invoice, InvoiceStatus
 
 
 class Prototype(ABC):
@@ -63,7 +64,7 @@ class OrderPrototype(Prototype):
         cloned_order.order_number = f"ORD-{str(uuid4())[:8]}"
         return OrderPrototype(cloned_order)
     
-    def customize_for_customer(self, customer_id: str, table_id: str = None) -> Order:
+    def customize_for_customer(self, customer_id: str, table_id: Optional[str] = None) -> Order:
         """Personaliza el pedido para un cliente específico"""
         cloned_order = self.order.model_copy()
         cloned_order.id = uuid4()
@@ -127,7 +128,7 @@ class InvoicePrototype(Prototype):
         cloned_invoice = self.invoice.model_copy()
         cloned_invoice.id = uuid4()
         cloned_invoice.invoice_number = f"CN-{str(uuid4())[:8]}"
-        cloned_invoice.status = "refunded"
+        cloned_invoice.status = InvoiceStatus.REFUNDED
         
         # Invertir los montos para la nota de crédito
         cloned_invoice.subtotal = -cloned_invoice.subtotal
@@ -179,7 +180,7 @@ class MenuTemplateManager:
         self.prototype_manager.register_prototype(name, prototype)
     
     def create_from_template(self, template_name: str, 
-                           customizations: Dict[str, Any] = None) -> MenuItem:
+                           customizations: Optional[Dict[str, Any]] = None) -> MenuItem:
         """Crea un elemento del menú desde una plantilla"""
         prototype = self.prototype_manager.get_prototype(template_name)
         if isinstance(prototype, MenuItemPrototype):

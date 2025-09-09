@@ -1,17 +1,39 @@
 # Core FastAPI dependencies
-fastapi
-uvicorn[standard]
-pydantic
-python-dotenv
-python-multipart
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+starlette>=0.27.0
+
+# Pydantic and data validation
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Configuration and environment
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
 
 # Database and external services
-supabase
-httpx
+supabase>=2.0.0
+httpx>=0.24.0,<0.25.0
 
 # Authentication and security
-passlib[bcrypt]
-python-jose[cryptography]
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.0
+cryptography>=41.0.0
+
+# Date and timezone handling
+pytz>=2023.3
 
 # Email validation
-email-validator
+email-validator>=2.0.0
+
+# Additional utilities
+typing-extensions>=4.7.0
+
+# Production server
+gunicorn>=21.0.0
+
+# Development dependencies (optional, can be commented for production)
+# pytest>=7.4.0
+# pytest-asyncio>=0.21.0
+# httpx>=0.24.0  # For testing
