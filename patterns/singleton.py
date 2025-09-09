@@ -25,7 +25,7 @@ class LoggerSingleton:
             self._logs: list = []
             self._initialized = True
     
-    def log(self, level: str, message: str, data: Dict[str, Any] = None) -> None:
+    def log(self, level: str, message: str, data: Optional[Dict[str, Any]] = None) -> None:
         """Registra un log"""
         import datetime
         log_entry = {
@@ -37,7 +37,7 @@ class LoggerSingleton:
         self._logs.append(log_entry)
         print(f"[{level.upper()}] {message}")
     
-    def get_logs(self, level: str = None) -> list:
+    def get_logs(self, level: Optional[str] = None) -> list:
         """Obtiene los logs, opcionalmente filtrados por nivel"""
         if level:
             return [log for log in self._logs if log["level"] == level]
@@ -144,7 +144,7 @@ class NotificationSingleton:
                 except Exception as e:
                     print(f"Error en callback de notificación: {e}")
     
-    def get_notifications(self, event_type: str = None) -> list:
+    def get_notifications(self, event_type: Optional[str] = None) -> list:
         """Obtiene las notificaciones, opcionalmente filtradas por tipo"""
         if event_type:
             return [n for n in self._notifications if n["event_type"] == event_type]
@@ -224,9 +224,11 @@ class DatabaseConnectionSingleton:
     def health_check(self) -> bool:
         """Verifica la salud de la conexión"""
         try:
-            # Intentar una consulta simple
-            result = self._connection.client.table("users").select("id").limit(1).execute()
-            return True
+            if self._connection and self._connection.client:
+                # Intentar una consulta simple
+                result = self._connection.client.table("users").select("id").limit(1).execute()
+                return True
+            return False
         except Exception:
             return False
 

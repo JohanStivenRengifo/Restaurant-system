@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.openapi.utils import get_openapi
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
@@ -305,7 +306,7 @@ async def dashboard():
 
 if __name__ == "__main__":
     # Obtener puerto de Railway o usar el configurado
-    port = int(os.environ.get("PORT", settings.port))
+    port = int(os.environ.get("PORT", str(settings.port)))
     host = os.environ.get("HOST", settings.host)
     
     print("🍽️  Iniciando Sistema de Restaurante...")
@@ -320,6 +321,6 @@ if __name__ == "__main__":
         "main:app",
         host=host,
         port=port,
-        reload=settings.debug,
+        reload=False,  # Desactivar reload en producción
         log_level="info"
     )
