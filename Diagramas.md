@@ -332,7 +332,7 @@ stateDiagram-v2
 graph TB
     subgraph Capa_de_Presentacion
         UI[Interfaz de Usuario\n- Formulario de factura\n- Lista de facturas\n- Descarga de PDFs]
-        API[API Routes\n- /api/factus/auth\n- /api/factus/invoices\n- /api/factus/invoices/[id]/pdf]
+        API[API Routes\n- /api/factus/auth\n- /api/factus/invoices\n- /api/factus/invoices/id/pdf]
     end
 
     subgraph Capa_de_Logica_de_Negocio
