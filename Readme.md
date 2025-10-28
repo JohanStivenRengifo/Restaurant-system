@@ -169,6 +169,12 @@ classDiagram
     Platillo <|.. Bebida
 ```
 
+#### Diagrama de Secuencia - Factory Method
+
+```mermaid
+
+```
+
 **Código Principal**:
 ```typescript
 export abstract class PlatilloFactory {
@@ -290,6 +296,12 @@ classDiagram
     Formulario <|.. FormularioOscuro
 ```
 
+#### Diagrama de Secuencia - Abstract Factory
+
+```mermaid
+
+```
+
 **Código Principal**:
 ```typescript
 export interface RestauranteUIFactory {
@@ -396,6 +408,12 @@ classDiagram
     MenuTemporada --> Platillo : contains
     PedidoRecurrente --> Platillo : contains
     ClienteFrecuente --> PedidoRecurrente : contains
+```
+
+#### Diagrama de Secuencia - Prototype
+
+```mermaid
+
 ```
 
 **Código Principal**:
@@ -524,6 +542,12 @@ classDiagram
     NotificacionBuilder --> NotificacionCompleta : builds
 ```
 
+#### Diagrama de Secuencia - Builder
+
+```mermaid
+
+```
+
 **Código Principal**:
 ```typescript
 export class PedidoBuilder {
@@ -559,6 +583,7 @@ export class PedidoBuilder {
     }
 }
 ```
+
 
 **Ventajas**:
 - Construcción paso a paso de objetos complejos
@@ -669,6 +694,59 @@ classDiagram
     DecoradorFactory --> PlatilloDecorador : creates
 ```
 
+#### Diagrama de Secuencia - Decorator
+
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant PlatilloConExtraSalsa
+    participant PlatilloDecorador
+    participant PlatilloBase
+    
+    Note over Cliente,PlatilloBase: Obtener Precio con Decoración
+    
+    Cliente->>PlatilloConExtraSalsa: obtenerPrecio()
+    activate PlatilloConExtraSalsa
+    
+    PlatilloConExtraSalsa->>PlatilloDecorador: platillo.obtenerPrecio()
+    activate PlatilloDecorador
+    
+    PlatilloDecorador->>PlatilloBase: obtenerPrecio()
+    activate PlatilloBase
+    PlatilloBase-->>PlatilloDecorador: precioBase
+    deactivate PlatilloBase
+    
+    PlatilloDecorador-->>PlatilloConExtraSalsa: precioBase
+    deactivate PlatilloDecorador
+    
+    Note over PlatilloConExtraSalsa: precioBase + costoExtra (2000)
+    
+    PlatilloConExtraSalsa-->>Cliente: precioTotal
+    deactivate PlatilloConExtraSalsa
+    
+    Note over Cliente,PlatilloBase: Obtener Descripción con Decoración
+    
+    Cliente->>PlatilloConExtraSalsa: obtenerDescripcion()
+    activate PlatilloConExtraSalsa
+    
+    PlatilloConExtraSalsa->>PlatilloDecorador: platillo.obtenerDescripcion()
+    activate PlatilloDecorador
+    
+    PlatilloDecorador->>PlatilloBase: obtenerDescripcion()
+    activate PlatilloBase
+    PlatilloBase-->>PlatilloDecorador: descripcionBase
+    deactivate PlatilloBase
+    
+    PlatilloDecorador-->>PlatilloConExtraSalsa: descripcionBase
+    deactivate PlatilloDecorador
+    
+    Note over PlatilloConExtraSalsa: descripcionBase + " + Extra salsa"
+    
+    PlatilloConExtraSalsa-->>Cliente: descripcionCompleta
+    deactivate PlatilloConExtraSalsa
+```
+
+
 **Código Principal**:
 ```typescript
 export abstract class PlatilloDecorador implements PlatilloBase {
@@ -692,6 +770,17 @@ export class PlatilloConExtraSalsa extends PlatilloDecorador {
     }
 }
 ```
+
+¿Por qué se usó?
+
+Necesidad: Agregar funcionalidades dinámicas a platillos sin modificar su estructura base
+Problema que resuelve: Evitar crear una clase por cada combinación posible (Platillo + Salsa, Platillo + Queso, Platillo + Salsa + Queso, etc.)
+
+-Añade extras de forma flexible y en tiempo de ejecución
+-Cumple el principio Open/Closed (abierto para extensión, cerrado para modificación)
+-Permite apilar múltiples decoradores (extra salsa + extra queso + extra carne)
+
+Caso de uso real: Un restaurante donde los clientes personalizan sus platillos agregando ingredientes extras que tienen costo adicional.
 
 **Ventajas**:
 - Flexibilidad para añadir funcionalidades
@@ -781,7 +870,7 @@ classDiagram
     AdaptadorFactory --> SistemaPagoInterno : creates
 ```
 
-#### Diagrama de Clases - Adapter
+#### Diagrama de Secuencia - Adapter
 
 ```mermaid
 sequenceDiagram
@@ -864,6 +953,15 @@ export class AdaptadorCripto implements SistemaPagoInterno {
     }
 }
 ```
+¿Por qué se usó?
+Necesidad: Integrar un servicio externo de criptomonedas que tiene una interfaz diferente a la que usa nuestro sistema de pagos interno.Problema que resuelve: El servicio externo usa métodos específicos (pagarConBitcoin, pagarConEthereum) que retornan objetos con estructura diferente ({success, txHash, error}), pero nuestro sistema espera un formato unificado ResultadoPago.Ventajas:
+
+-  Convierte la interfaz externa incompatible en una compatible con nuestro sistema
+- Permite cambiar o agregar nuevos servicios de pago sin modificar el código del sistema
+- Encapsula la lógica de transformación de datos en un solo lugar
+- Mantiene el código del sistema desacoplado de implementaciones externas
+
+Caso de uso real: Un restaurante que integra múltiples pasarelas de pago (tarjetas, PayPal, criptomonedas) donde cada una tiene su propia API, pero el sistema necesita procesarlas de manera uniforme.
 
 **Ventajas**:
 - Integración de sistemas externos sin modificar código existente
@@ -1017,6 +1115,70 @@ classDiagram
     Notificacion --> CanalNotificacion : uses
 ```
 
+#### Diagrama de Secuencia - Bridge
+
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant ReporteVentas
+    participant Reporte
+    participant FormatoReporte
+    
+    Note over Cliente,FormatoReporte: Construcción del Reporte
+    
+    Cliente->>ReporteVentas: new ReporteVentas(formato, fechaInicio, fechaFin)
+    activate ReporteVentas
+    ReporteVentas->>Reporte: super(formato)
+    activate Reporte
+    Note over Reporte: Almacena referencia<br/>a FormatoReporte
+    Reporte-->>ReporteVentas: 
+    deactivate Reporte
+    Note over ReporteVentas: Almacena fechaInicio<br/>y fechaFin
+    ReporteVentas-->>Cliente: instancia ReporteVentas
+    deactivate ReporteVentas
+    
+    Note over Cliente,FormatoReporte: Generar Reporte (sin formato)
+    
+    Cliente->>ReporteVentas: generar()
+    activate ReporteVentas
+    
+    ReporteVentas->>ReporteVentas: obtenerDatos()
+    Note over ReporteVentas: Consulta datos de ventas<br/>entre fechaInicio y fechaFin
+    
+    ReporteVentas->>ReporteVentas: reduce() para calcular totalVentas
+    Note over ReporteVentas: Suma todos los totales
+    
+    ReporteVentas-->>Cliente: "Reporte de Ventas - Total: $X"
+    deactivate ReporteVentas
+    
+    Note over Cliente,FormatoReporte: Exportar Reporte (con formato)
+    
+    Cliente->>ReporteVentas: exportar()
+    activate ReporteVentas
+    
+    ReporteVentas->>Reporte: exportar()
+    activate Reporte
+    
+    Reporte->>ReporteVentas: obtenerDatos()
+    activate ReporteVentas
+    Note over ReporteVentas: Retorna array de<br/>datos de ventas
+    ReporteVentas-->>Reporte: datos[]
+    deactivate ReporteVentas
+    
+    Reporte->>FormatoReporte: exportar(datos)
+    activate FormatoReporte
+    Note over FormatoReporte: Formatea datos según<br/>implementación concreta<br/>(PDF, Excel, JSON, etc.)
+    FormatoReporte-->>Reporte: datosFormateados
+    deactivate FormatoReporte
+    
+    Reporte-->>ReporteVentas: datosFormateados
+    deactivate Reporte
+    
+    ReporteVentas-->>Cliente: datosFormateados
+    deactivate ReporteVentas
+```
+
+
 **Código Principal**:
 ```typescript
 export abstract class Reporte {
@@ -1049,6 +1211,18 @@ export class ReporteVentas extends Reporte {
     }
 }
 ```
+
+¿Porque se uso?
+Necesidad: Separar la abstracción tipo de reporte de su implementación en un formato de exportación para que ambas puedan variar independientemente.
+Problema que resuelve: Evitar la explosión combinatoria de clases. Sin Bridge necesitarías: ReporteVentasPDF, ReporteVentasExcel, ReporteVentasJSON, ReporteInventarioPDF, ReporteInventarioExcel, ReporteInventarioJSON, etc.
+Ventajas:
+
+- Permite combinar cualquier tipo de reporte con cualquier formato sin crear nuevas clases
+- Facilita agregar nuevos tipos de reportes sin modificar los formatos existentes
+- Facilita agregar nuevos formatos sin modificar los reportes existentes
+- Reduce el acoplamiento entre el contenido del reporte y su representación
+
+Caso de uso real: Sistema de reportes empresariales donde se generan diferentes tipos de análisis (ventas, inventario, empleados, finanzas) y cada uno debe poder exportarse en múltiples formatos (PDF, Excel, JSON, CSV) según las necesidades del usuario.
 
 **Ventajas**:
 - Separación de abstracción e implementación
@@ -1208,6 +1382,74 @@ classDiagram
     ProxyReporteService --> ReporteServiceReal : delegates to
 ```
 
+#### Diagrama de Secuencia - Proxy
+
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant ProxyInventario
+    participant InventarioReal
+    participant Cache
+    
+    Note over Cliente,Cache: Escenario 1: Usuario sin permisos
+    
+    Cliente->>ProxyInventario: obtenerIngredientes()
+    activate ProxyInventario
+    
+    ProxyInventario->>ProxyInventario: tienePermiso('INVENTARIO_READ')
+    Note over ProxyInventario: usuarioActual = null<br/>o sin permisos necesarios
+    
+    ProxyInventario--xCliente: throw Error("Acceso denegado")
+    deactivate ProxyInventario
+    
+    Note over Cliente,Cache: Escenario 2: Usuario con permisos - Datos en caché válido
+    
+    Cliente->>ProxyInventario: obtenerIngredientes()
+    activate ProxyInventario
+    
+    ProxyInventario->>ProxyInventario: tienePermiso('INVENTARIO_READ')
+    Note over ProxyInventario: Usuario tiene permiso<br/>o es ADMIN
+    
+    ProxyInventario->>Cache: has('ingredientes')
+    Cache-->>ProxyInventario: true
+    
+    ProxyInventario->>ProxyInventario: esCacheValido('ingredientes')
+    Note over ProxyInventario: Verifica si timestamp<br/>< 5 minutos
+    
+    ProxyInventario->>Cache: get('ingredientes')
+    Cache-->>ProxyInventario: ingredientes[]
+    
+    Note over ProxyInventario: console.log('Retornando<br/>datos desde caché...')
+    
+    ProxyInventario-->>Cliente: ingredientes[]
+    deactivate ProxyInventario
+    
+    Note over Cliente,Cache: Escenario 3: Usuario con permisos - Caché vacío o expirado
+    
+    Cliente->>ProxyInventario: obtenerIngredientes()
+    activate ProxyInventario
+    
+    ProxyInventario->>ProxyInventario: tienePermiso('INVENTARIO_READ')
+    Note over ProxyInventario: Usuario tiene permiso
+    
+    ProxyInventario->>Cache: has('ingredientes')
+    Cache-->>ProxyInventario: false
+    
+    Note over ProxyInventario: Caché no existe o expiró
+    
+    ProxyInventario->>InventarioReal: obtenerIngredientes()
+    activate InventarioReal
+    Note over InventarioReal: Consulta a base de datos<br/>o servicio externo
+    InventarioReal-->>ProxyInventario: ingredientes[]
+    deactivate InventarioReal
+    
+    ProxyInventario->>Cache: set('ingredientes', ingredientes)
+    ProxyInventario->>Cache: set(timestamp, Date.now())
+    
+    ProxyInventario-->>Cliente: ingredientes[]
+    deactivate ProxyInventario
+```
+
 **Código Principal**:
 ```typescript
 export class ProxyInventario implements Inventario {
@@ -1243,6 +1485,20 @@ export class ProxyInventario implements Inventario {
     }
 }
 ```
+¿Por qué se usó?
+Necesidad: Controlar el acceso al inventario real agregando capas de seguridad, optimización y auditoría sin modificar la clase InventarioReal.
+Problema que resuelve:
+
+- Usuarios no autorizados podrían acceder a datos sensibles del inventario
+- Consultas repetidas a la base de datos generan lentitud y sobrecarga
+- Falta de trazabilidad sobre quién accede al inventario y cuándo
+
+Seguridad: Valida permisos antes de permitir el acceso (control de acceso)
+Performance: Implementa caché de 5 minutos para reducir consultas costosas a base de datos
+Logging: Registra accesos para auditoría y debugging
+Transparencia: El cliente usa la misma interfaz Inventario sin saber que existe un proxy intermediario
+
+Caso de uso real: Sistema de restaurante donde solo gerentes y administradores pueden consultar el inventario, y las consultas frecuentes (durante preparación de los platillos) se cachean para no saturar la base de datos, manteniendo un registro de auditoría de quién consultó qué información.
 
 **Ventajas**:
 - Control de acceso y validación de permisos
