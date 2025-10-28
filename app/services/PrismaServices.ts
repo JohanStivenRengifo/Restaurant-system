@@ -564,7 +564,33 @@ export class ReservaServiceWrapper {
 export class DashboardServiceWrapper {
   async obtenerEstadisticas(): Promise<ApiResponse<any>> {
     try {
-      const estadisticas = await dbService.obtenerEstadisticasDashboard();
+      const [pedidos, facturas, mesas, clientes] = await Promise.all([
+        dbService.obtenerPedidos(),
+        dbService.obtenerFacturas(),
+        dbService.obtenerMesas(),
+        dbService.obtenerClientes()
+      ]);
+
+      const estadisticas = {
+        totalPedidos: pedidos.length,
+        pedidosHoy: pedidos.filter(p => {
+          const hoy = new Date();
+          const fechaPedido = new Date(p.createdAt);
+          return fechaPedido.toDateString() === hoy.toDateString();
+        }).length,
+        totalFacturas: facturas.length,
+        ingresosHoy: facturas
+          .filter(f => {
+            const hoy = new Date();
+            const fechaFactura = new Date(f.createdAt);
+            return fechaFactura.toDateString() === hoy.toDateString();
+          })
+          .reduce((sum, f) => sum + f.total, 0),
+        mesasDisponibles: mesas.filter(m => m.estado === 'DISPONIBLE').length,
+        totalMesas: mesas.length,
+        clientesFrecuentes: clientes.filter(c => c.esFrecuente).length,
+        totalClientes: clientes.length
+      };
 
       return {
         success: true,

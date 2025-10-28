@@ -71,7 +71,7 @@ export default function DashboardPage() {
       }
 
       // Cargar pedidos recientes
-      const pedidosResponse = await fetch('/api/pedidos?estado=PREPARANDO');
+      const pedidosResponse = await fetch('/api/pedidos?estado=RECIBIDO');
       const pedidosData = await pedidosResponse.json();
 
       if (pedidosData.success) {
@@ -157,12 +157,12 @@ export default function DashboardPage() {
         }
       }
 
-      const response = await fetch(`/api/pedidos?id=${pedidoId}`, {
+      const response = await fetch('/api/pedidos', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ estado: nuevoEstado }),
+        body: JSON.stringify({ id: pedidoId, estado: nuevoEstado }),
       });
 
       const data = await response.json();
@@ -174,6 +174,9 @@ export default function DashboardPage() {
             pedido.id === pedidoId ? { ...pedido, estado: nuevoEstado } : pedido
           )
         );
+
+        // Recargar los datos para mantener sincronización
+        await cargarDatos();
       }
     } catch (err) {
       console.error('Error al actualizar estado del pedido:', err);
@@ -234,7 +237,7 @@ export default function DashboardPage() {
                 (facturaGenerada.items || []).length > 0
                   ? (facturaGenerada.items || [])
                       .map(
-                        (item) => `
+                        (item: any) => `
                 <tr>
                   <td>${item.nombre}</td>
                   <td>${item.cantidad}</td>
@@ -848,22 +851,24 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {(facturaGenerada.items || []).map((item, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.nombre}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.cantidad}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${item.precio.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${(item.precio * item.cantidad).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
+                    {(facturaGenerada.items || []).map(
+                      (item: any, index: number) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.nombre}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.cantidad}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${item.precio.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${(item.precio * item.cantidad).toLocaleString()}
+                          </td>
+                        </tr>
+                      )
+                    )}
                   </tbody>
                 </table>
               </div>

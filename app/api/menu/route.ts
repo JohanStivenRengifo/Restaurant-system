@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { MenuService } from '@/app/services'
+import { MenuService } from '@/app/services/MenuService'
 
 const menuService = new MenuService()
 
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const categorias = searchParams.get('categorias')
 
     if (id) {
-        const result = await menuService.obtenerPlatillo(id)
+        const result = await menuService.obtenerPlatilloPorId(id)
         return NextResponse.json(result)
     }
 

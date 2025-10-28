@@ -646,19 +646,6 @@ export default function InventarioPage() {
                         required
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Descripción
-                      </label>
-                      <textarea
-                        name="descripcion"
-                        defaultValue={
-                          ingredienteSeleccionado?.descripcion || ''
-                        }
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        rows={2}
-                      />
-                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -666,8 +653,8 @@ export default function InventarioPage() {
                         </label>
                         <input
                           type="number"
-                          name="cantidad"
-                          defaultValue={ingredienteSeleccionado?.cantidad || ''}
+                          name="stock"
+                          defaultValue={ingredienteSeleccionado?.stock || ''}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           required
                         />
@@ -712,35 +699,13 @@ export default function InventarioPage() {
                         </label>
                         <input
                           type="number"
-                          name="costoUnitario"
+                          name="costo"
                           step="0.01"
-                          defaultValue={
-                            ingredienteSeleccionado?.costoUnitario || ''
-                          }
+                          defaultValue={ingredienteSeleccionado?.costo || ''}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           required
                         />
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Categoría *
-                      </label>
-                      <select
-                        name="categoria"
-                        defaultValue={ingredienteSeleccionado?.categoria || ''}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      >
-                        <option value="">Seleccionar categoría...</option>
-                        <option value="CARNES">Carnes</option>
-                        <option value="VERDURAS">Verduras</option>
-                        <option value="LACTEOS">Lácteos</option>
-                        <option value="GRANOS">Granos</option>
-                        <option value="ESPECIAS">Especias</option>
-                        <option value="BEBIDAS">Bebidas</option>
-                        <option value="OTROS">Otros</option>
-                      </select>
                     </div>
                   </div>
                   <div className="flex space-x-3 mt-6">

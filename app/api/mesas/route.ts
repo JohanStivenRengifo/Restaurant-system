@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { MesaService } from '@/app/services'
+import { MesaService } from '@/app/services/MesaService'
 
 const mesaService = new MesaService()
 
@@ -25,11 +25,22 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         const result = await mesaService.crearMesa(body)
         return NextResponse.json(result, { status: result.success ? 201 : 400 })
-    } catch (error) {
+    } catch (error: any) {
+        console.error('Error en POST /api/mesas:', error)
+        
+        // Manejar errores específicos de Prisma
+        if (error.code === 'P2002') {
+            return NextResponse.json({
+                success: false,
+                error: 'Ya existe una mesa con ese número. Por favor, elige un número diferente.',
+                code: 'DUPLICATE_NUMBER'
+            }, { status: 409 })
+        }
+        
         return NextResponse.json({
             success: false,
-            error: 'Error al procesar la solicitud'
-        }, { status: 400 })
+            error: 'Error interno del servidor al crear mesa'
+        }, { status: 500 })
     }
 }
 

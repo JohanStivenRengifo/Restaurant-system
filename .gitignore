@@ -247,3 +247,4 @@ dist/
 # Misc
 *.tgz
 *.tar.gz
+/lib/generated/prisma

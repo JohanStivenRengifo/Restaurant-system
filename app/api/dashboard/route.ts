@@ -3,11 +3,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { DashboardService } from '@/app/services'
-
-const dashboardService = new DashboardService()
+import { dashboardServiceWrapper } from '@/app/services'
 
 export async function GET() {
-    const result = await dashboardService.obtenerEstadisticas()
+    const result = await dashboardServiceWrapper.obtenerEstadisticas()
     return NextResponse.json(result)
 }

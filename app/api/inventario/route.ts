@@ -3,12 +3,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { InventarioService } from '@/app/services'
-
-const inventarioService = new InventarioService()
+import { inventarioServiceWrapper } from '@/app/services'
 
 export async function GET() {
-    const result = await inventarioService.obtenerIngredientes()
+    const result = await inventarioServiceWrapper.obtenerIngredientes()
     return NextResponse.json(result)
 }
 
@@ -16,7 +14,7 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
 
-        const result = await inventarioService.crearIngrediente(body)
+        const result = await inventarioServiceWrapper.crearIngrediente(body)
         return NextResponse.json(result, { status: result.success ? 201 : 400 })
     } catch (error) {
         return NextResponse.json({
@@ -41,12 +39,12 @@ export async function PUT(request: NextRequest) {
 
         // Si solo se está actualizando la cantidad (reponer stock)
         if (body.cantidad !== undefined && Object.keys(body).length === 1) {
-            const result = await inventarioService.actualizarStock(ingredienteId, body.cantidad)
+            const result = await inventarioServiceWrapper.actualizarStockIngrediente(ingredienteId, body.cantidad)
             return NextResponse.json(result)
         }
 
         // Si se están actualizando otros campos del ingrediente
-        const result = await inventarioService.actualizarIngrediente(ingredienteId, body)
+        const result = await inventarioServiceWrapper.actualizarIngrediente(ingredienteId, body)
         return NextResponse.json(result, { status: result.success ? 200 : 400 })
     } catch (error) {
         return NextResponse.json({
@@ -68,7 +66,7 @@ export async function DELETE(request: NextRequest) {
             }, { status: 400 })
         }
 
-        const result = await inventarioService.eliminarIngrediente(ingredienteId)
+        const result = await inventarioServiceWrapper.eliminarIngrediente(ingredienteId)
         return NextResponse.json(result, { status: result.success ? 200 : 400 })
     } catch (error) {
         return NextResponse.json({

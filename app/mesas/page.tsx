@@ -135,7 +135,15 @@ export default function MesasPage() {
 
         setShowModal(false);
       } else {
-        alert('Error al guardar la mesa');
+        // Mostrar error específico
+        const errorMessage = data.error || 'Error al procesar la solicitud';
+        alert(`Error: ${errorMessage}`);
+        
+        // Si es error de número duplicado, sugerir un número disponible
+        if (data.code === 'DUPLICATE_NUMBER') {
+          const siguienteNumero = Math.max(...mesas.map(m => m.numero), 0) + 1;
+          alert(`Sugerencia: Usa el número ${siguienteNumero} que está disponible.`);
+        }
       }
     } catch (err) {
       console.error('Error:', err);
@@ -446,9 +454,10 @@ export default function MesasPage() {
                       <input
                         type="number"
                         name="numero"
-                        defaultValue={mesaSeleccionada?.numero || ''}
+                        defaultValue={mesaSeleccionada?.numero || Math.max(...mesas.map(m => m.numero), 0) + 1}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         required
+                        min="1"
                       />
                     </div>
                     <div>

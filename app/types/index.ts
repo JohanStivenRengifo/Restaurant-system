@@ -190,6 +190,16 @@ export interface Factura extends BaseEntity {
         cantidad: number
         precio: number
     }>
+    // Propiedades para facturación electrónica
+    esElectronica?: boolean
+    facturaElectronica?: {
+        id: string
+        cufe?: string
+        qrUrl?: string
+        pdfUrl?: string
+        estado?: string
+        fechaCreacion?: Date
+    }
 }
 
 export interface MovimientoInventario extends BaseEntity {
@@ -273,20 +283,34 @@ export interface CrearReservaRequest {
 
 export interface CrearFacturaRequest {
     pedidoId: string
-    metodoPago: MetodoPago
+    clienteId?: string
+    numero: string
+    subtotal: number
     descuento?: number
+    impuestos?: number
+    iva?: number
+    total: number
+    metodoPago: MetodoPago
+    estado?: EstadoFactura
+    clienteNombre?: string
+    esElectronica?: boolean
+    items?: Array<{
+        nombre: string
+        cantidad: number
+        precio: number
+    }>
 }
 
 // ===== TIPOS PARA RESPONSES =====
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
     success: boolean
     data?: T
     message?: string
     error?: string
 }
 
-export interface PaginatedResponse<T = any> {
+export interface PaginatedResponse<T = unknown> {
     data: T[]
     total: number
     page: number
@@ -402,8 +426,8 @@ export interface Auditoria extends BaseEntity {
     accion: string
     entidad: string
     entidadId: string
-    datosAnteriores?: any
-    datosNuevos?: any
+    datosAnteriores?: Record<string, unknown>
+    datosNuevos?: Record<string, unknown>
     ip?: string
     userAgent?: string
 }
@@ -413,7 +437,7 @@ export interface Auditoria extends BaseEntity {
 export interface ExportarDatosRequest {
     tipo: 'PEDIDOS' | 'CLIENTES' | 'INVENTARIO' | 'VENTAS'
     formato: 'PDF' | 'EXCEL' | 'CSV' | 'JSON'
-    filtros?: any
+    filtros?: Record<string, unknown>
     fechaInicio?: Date
     fechaFin?: Date
 }
@@ -492,7 +516,7 @@ export interface ReporteClientes {
 
 export interface WebSocketMessage {
     tipo: 'PEDIDO_ACTUALIZADO' | 'MESA_ACTUALIZADA' | 'STOCK_BAJO' | 'NOTIFICACION'
-    data: any
+    data: Record<string, unknown>
     timestamp: Date
 }
 
@@ -513,7 +537,7 @@ export interface MesaActualizadaMessage {
 export interface ValidationError {
     campo: string
     mensaje: string
-    valor?: any
+    valor?: unknown
 }
 
 export interface ValidationResult {
@@ -529,7 +553,7 @@ export interface CacheConfig {
     estrategia: 'LRU' | 'FIFO' | 'LFU'
 }
 
-export interface CacheEntry<T = any> {
+export interface CacheEntry<T = unknown> {
     key: string
     value: T
     timestamp: number
@@ -541,7 +565,7 @@ export interface CacheEntry<T = any> {
 export interface LogEntry {
     nivel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
     mensaje: string
-    contexto?: Record<string, any>
+    contexto?: Record<string, unknown>
     timestamp: Date
     usuarioId?: string
     ip?: string

@@ -4,26 +4,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import {
-    ClienteService,
-    MesaService,
-    MenuService,
-    PedidoService,
-    ReservaService,
-    FacturaService,
-    InventarioService,
-    DashboardService
-} from '@/app/services'
+import { ClienteService } from '@/app/services/ClienteService'
 
 // Instanciar servicios
 const clienteService = new ClienteService()
-const mesaService = new MesaService()
-const menuService = new MenuService()
-const pedidoService = new PedidoService()
-const reservaService = new ReservaService()
-const facturaService = new FacturaService()
-const inventarioService = new InventarioService()
-const dashboardService = new DashboardService()
 
 // ===== RUTAS DE CLIENTES =====
 
@@ -32,7 +16,7 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id')
 
     if (id) {
-        const result = await clienteService.obtenerCliente(id)
+        const result = await clienteService.obtenerClientePorId(id)
         return NextResponse.json(result)
     }
 
@@ -67,7 +51,7 @@ export async function PUT(request: NextRequest) {
         }
 
         if (body.puntos !== undefined) {
-            const result = await clienteService.actualizarPuntosCliente(clienteId, body.puntos)
+            const result = await clienteService.actualizarCliente(clienteId, { puntos: body.puntos })
             return NextResponse.json(result)
         }
 

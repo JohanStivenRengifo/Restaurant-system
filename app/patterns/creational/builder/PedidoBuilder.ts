@@ -147,7 +147,7 @@ export class PedidoBuilder {
 
     // Método para calcular el total
     private calcularTotal(): void {
-        let subtotal = this.pedido.platillos!.reduce((sum, platillo) =>
+        const subtotal = this.pedido.platillos!.reduce((sum, platillo) =>
             sum + (platillo.precioUnitario * platillo.cantidad), 0
         )
 

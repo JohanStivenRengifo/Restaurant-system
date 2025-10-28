@@ -55,23 +55,37 @@ export default function MenuPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Simular categorías con los platillos
+        // Simular categorías con los platillos usando los IDs reales de PostgreSQL
         const categoriasSimuladas: Categoria[] = [
           {
-            id: '1',
+            id: 'cat-2',
             nombre: 'Platos Principales',
             descripcion: 'Nuestros platos estrella',
             orden: 1,
             activa: true,
-            platillos: data.data.filter((p: Platillo) => p.categoriaId === '1'),
+            platillos: data.data.filter(
+              (p: Platillo) => p.categoriaId === 'cat-2'
+            ),
           },
           {
-            id: '2',
+            id: 'cat-1',
             nombre: 'Entradas',
             descripcion: 'Para comenzar tu comida',
             orden: 2,
             activa: true,
-            platillos: data.data.filter((p: Platillo) => p.categoriaId === '2'),
+            platillos: data.data.filter(
+              (p: Platillo) => p.categoriaId === 'cat-1'
+            ),
+          },
+          {
+            id: 'cat-3',
+            nombre: 'Bebidas',
+            descripcion: 'Bebidas y refrescos',
+            orden: 3,
+            activa: true,
+            platillos: data.data.filter(
+              (p: Platillo) => p.categoriaId === 'cat-3'
+            ),
           },
         ];
         setCategorias(categoriasSimuladas);
@@ -441,8 +455,9 @@ export default function MenuPage() {
                         required
                       >
                         <option value="">Seleccionar categoría...</option>
-                        <option value="1">Platos Principales</option>
-                        <option value="2">Entradas</option>
+                        <option value="cat-2">Platos Principales</option>
+                        <option value="cat-1">Entradas</option>
+                        <option value="cat-3">Bebidas</option>
                       </select>
                     </div>
                   </div>

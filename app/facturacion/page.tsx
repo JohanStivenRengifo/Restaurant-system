@@ -1,6 +1,6 @@
 /**
  * Página del Módulo de Facturación
- * Gestión de facturas y pagos
+ * Gestión de facturas y pagos con integración de facturación electrónica Factus
  */
 
 'use client';
@@ -8,6 +8,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, Button, LoadingSpinner } from '@/app/components/ui';
+import {
+  FactusAdapterService,
+  RestaurantePedido,
+  RestauranteEstablecimiento,
+} from '../services/factus/FactusAdapterService';
+import { FactusInvoiceSummary } from '../types/factus';
 
 interface Factura {
   id: string;
@@ -23,6 +29,11 @@ interface Factura {
   fecha: string;
   createdAt: string;
   updatedAt: string;
+  // Campos para facturación electrónica
+  facturaElectronica?: FactusInvoiceSummary;
+  cufe?: string;
+  qrUrl?: string;
+  esElectronica?: boolean;
 }
 
 export default function FacturacionPage() {
@@ -33,18 +44,30 @@ export default function FacturacionPage() {
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<
-    'nueva' | 'manual' | 'ver' | 'imprimir'
+    'nueva' | 'manual' | 'ver' | 'imprimir' | 'electronica'
   >('nueva');
   const [facturaSeleccionada, setFacturaSeleccionada] =
     useState<Factura | null>(null);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<any>(null);
+
+  // Estados para facturación electrónica
+  const [authStatus, setAuthStatus] = useState<any>(null);
+  const [numberingRanges, setNumberingRanges] = useState<any[]>([]);
+  const [selectedRangeId, setSelectedRangeId] = useState<number | null>(null);
+  const [creatingElectronicInvoice, setCreatingElectronicInvoice] =
+    useState(false);
 
   useEffect(() => {
     cargarDatos();
   }, []);
 
   const cargarDatos = async () => {
-    await Promise.all([cargarFacturas(), cargarPedidos()]);
+    await Promise.all([
+      cargarFacturas(),
+      cargarPedidos(),
+      cargarEstadoAutenticacion(),
+      cargarRangosNumeracion(),
+    ]);
   };
 
   const cargarPedidos = async () => {
@@ -87,6 +110,63 @@ export default function FacturacionPage() {
     }
   };
 
+  const cargarEstadoAutenticacion = async () => {
+    try {
+      const response = await fetch('/api/factus/auth');
+      const data = await response.json();
+
+      if (data.success) {
+        setAuthStatus(data.data);
+      } else {
+        setAuthStatus({ isAuthenticated: false, message: data.message });
+      }
+    } catch (err) {
+      console.error('Error cargando estado de autenticación:', err);
+      setAuthStatus({ isAuthenticated: false, error: 'Error de conexión' });
+    }
+  };
+
+  const cargarRangosNumeracion = async () => {
+    try {
+      const response = await fetch('/api/factus/numbering-ranges');
+      const data = await response.json();
+
+      if (data.success && data.data && Array.isArray(data.data.data)) {
+        // La API devuelve data.data.data (array dentro de objeto)
+        setNumberingRanges(data.data.data);
+        // Seleccionar el primer rango activo por defecto
+        try {
+          const rangoActivo = data.data.data.find(
+            (rango: any) => rango.is_active === 1
+          );
+          if (rangoActivo) {
+            setSelectedRangeId(rangoActivo.id);
+          }
+        } catch (findError) {
+          console.log('Error buscando rango activo:', findError);
+        }
+      } else if (data.success && Array.isArray(data.data)) {
+        // Fallback: si data.data es directamente el array
+        setNumberingRanges(data.data);
+        try {
+          const rangoActivo = data.data.find(
+            (rango: any) => rango.is_active === 1
+          );
+          if (rangoActivo) {
+            setSelectedRangeId(rangoActivo.id);
+          }
+        } catch (findError) {
+          console.log('Error buscando rango activo:', findError);
+        }
+      } else {
+        setNumberingRanges([]);
+      }
+    } catch (err) {
+      console.error('Error cargando rangos de numeración:', err);
+      setNumberingRanges([]);
+    }
+  };
+
   const handleNuevaFactura = () => {
     setFacturaSeleccionada(null);
     setPedidoSeleccionado(null);
@@ -98,6 +178,15 @@ export default function FacturacionPage() {
     setFacturaSeleccionada(null);
     setPedidoSeleccionado(null);
     setModalType('manual');
+    setShowModal(true);
+  };
+
+  const handleFacturaElectronica = () => {
+    if (!pedidoSeleccionado) {
+      alert('Debe seleccionar un pedido primero');
+      return;
+    }
+    setModalType('electronica');
     setShowModal(true);
   };
 
@@ -157,6 +246,247 @@ export default function FacturacionPage() {
     }
   };
 
+  const crearFacturaElectronica = async () => {
+    if (!pedidoSeleccionado) return;
+
+    setCreatingElectronicInvoice(true);
+
+    try {
+      // Convertir pedido a formato del restaurante
+      const pedidoRestaurante: RestaurantePedido = {
+        id: pedidoSeleccionado.id,
+        cliente: {
+          id:
+            pedidoSeleccionado.cliente?.id ||
+            `cliente-${pedidoSeleccionado.id}`,
+          nombre: pedidoSeleccionado.cliente?.nombre || 'Cliente',
+          apellido: pedidoSeleccionado.cliente?.apellido || 'Apellido',
+          email: pedidoSeleccionado.cliente?.email || 'cliente@restaurante.com',
+          telefono: pedidoSeleccionado.cliente?.telefono || '3001234567',
+          direccion:
+            pedidoSeleccionado.cliente?.direccion || 'Calle 123 #45-67, Bogotá',
+          tipoDocumento: 'cedula',
+          numeroDocumento:
+            pedidoSeleccionado.cliente?.numeroDocumento || '12345678',
+          esPersonaJuridica: false,
+          municipioId: 980, // Bogotá por defecto
+        },
+        platillos: (() => {
+          // Intentar diferentes estructuras de datos para platillos
+          let platillosData =
+            pedidoSeleccionado.platillos || pedidoSeleccionado.items || [];
+
+          // Si está vacío, crear un platillo por defecto
+          if (!platillosData || platillosData.length === 0) {
+            platillosData = [
+              {
+                id: 'platillo-default',
+                nombre: 'Platillo del Pedido',
+                codigo: 'PLAT001',
+                precio: 15000,
+                cantidad: 1,
+              },
+            ];
+          }
+
+          return platillosData.map((p: any, index: number) => ({
+            id: p.platillo?.id || p.id || `platillo-${index}`,
+            nombre: p.platillo?.nombre || p.nombre || 'Platillo',
+            codigo:
+              p.platillo?.codigo ||
+              p.codigo ||
+              `PLAT${String(index + 1).padStart(3, '0')}`,
+            precio: p.precioUnitario || p.precio || p.precioUnitario || 10000,
+            cantidad: p.cantidad || 1,
+            impuestoPorcentaje: 19,
+            estaExcluidoIVA: false,
+            unidadMedida: 'unidad',
+            categoria: 'general',
+          }));
+        })(),
+        metodoPago: 'efectivo',
+        formaPago: 'contado',
+        numeroReferencia: `REF${Date.now()}${pedidoSeleccionado.id.slice(-4)}`,
+        observaciones: pedidoSeleccionado.notas || '',
+      };
+
+      // Datos del establecimiento
+      const establecimiento: RestauranteEstablecimiento = {
+        nombre: 'Restaurante Delicias',
+        direccion: 'Calle 123 #45-67, Bogotá',
+        telefono: '601-234-5678',
+        email: 'info@restaurantedelicias.com',
+        municipioId: 980,
+      };
+
+      const response = await fetch('/api/factus/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          pedido: pedidoRestaurante,
+          establecimiento: establecimiento,
+          numberingRangeId: selectedRangeId,
+        }),
+      });
+
+      const data = await response.json();
+
+      console.log('Respuesta completa de Factus:', data);
+      console.log('data.data.factura:', data.data?.factura);
+      console.log('data.data.factura.data:', data.data?.factura?.data);
+      console.log('ID de factura desde Factus:', data.data?.factura?.id);
+
+      if (data.success) {
+        alert('Factura electrónica creada exitosamente');
+
+        // Crear factura local con datos electrónicos
+        // Calcular totales basándose en los datos del pedido si Factus no los proporciona
+        console.log(
+          '🔍 Debugging - pedidoRestaurante.platillos:',
+          pedidoRestaurante.platillos
+        );
+
+        const subtotalCalculado = pedidoRestaurante.platillos.reduce(
+          (sum, p) => sum + p.precio * p.cantidad,
+          0
+        );
+        const impuestosCalculados = subtotalCalculado * 0.19; // 19% IVA
+        const totalCalculado = subtotalCalculado + impuestosCalculados;
+
+        console.log('💰 Cálculos de totales:');
+        console.log('- Subtotal calculado:', subtotalCalculado);
+        console.log('- Impuestos calculados:', impuestosCalculados);
+        console.log('- Total calculado:', totalCalculado);
+
+        console.log('🔍 Debugging - Valores de Factus:');
+        console.log(
+          '- data.data.factura?.data?.bill?.gross_value:',
+          data.data.factura?.data?.bill?.gross_value
+        );
+        console.log(
+          '- data.data.factura?.data?.bill?.tax_amount:',
+          data.data.factura?.data?.bill?.tax_amount
+        );
+        console.log(
+          '- data.data.factura?.data?.bill?.total:',
+          data.data.factura?.data?.bill?.total
+        );
+        console.log(
+          '- data.data.factura?.data?.bill?.id:',
+          data.data.factura?.data?.bill?.id
+        );
+        console.log(
+          '- data.data.factura?.data?.bill?.cufe:',
+          data.data.factura?.data?.bill?.cufe
+        );
+
+        const facturaLocal: Factura = {
+          id: `fact_${Date.now()}`,
+          pedidoId: pedidoSeleccionado.id,
+          clienteId: pedidoSeleccionado.cliente?.id || '',
+          numero: data.data.factura?.data?.bill?.number || `FACT-${Date.now()}`,
+          subtotal: parseFloat(
+            data.data.factura?.data?.bill?.gross_value ||
+              subtotalCalculado.toString()
+          ),
+          descuento: parseFloat(data.data.factura?.data?.bill?.discount || '0'),
+          impuestos: parseFloat(
+            data.data.factura?.data?.bill?.tax_amount ||
+              impuestosCalculados.toString()
+          ),
+          total: parseFloat(
+            data.data.factura?.data?.bill?.total || totalCalculado.toString()
+          ),
+          metodoPago: 'TARJETA',
+          estado: 'PAGADA',
+          fecha: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          clienteNombre: pedidoRestaurante.cliente.nombre,
+          mesaNumero: pedidoSeleccionado.mesaNumero,
+          items: pedidoRestaurante.platillos.map((p) => ({
+            nombre: p.nombre,
+            cantidad: p.cantidad,
+            precio: p.precio,
+            subtotal: p.precio * p.cantidad,
+          })),
+          esElectronica: true,
+          facturaElectronica: {
+            id:
+              data.data.factura?.data?.bill?.id?.toString() ||
+              data.data.factura?.data?.bill?.cufe ||
+              `factus_${Date.now()}`,
+            cufe: data.data.factura?.data?.bill?.cufe,
+            qrUrl: data.data.factura?.data?.bill?.qr,
+            pdfUrl: data.data.factura?.data?.bill?.qr_image,
+            estado:
+              data.data.factura?.data?.bill?.status === 1
+                ? 'Validada'
+                : 'Pendiente',
+            fechaCreacion: new Date(),
+          } as any,
+        } as Factura;
+
+        // Actualizar estado local
+        setFacturas((prev) => [facturaLocal, ...prev]);
+
+        // Guardar factura en el servicio (base de datos)
+        try {
+          console.log('💾 Guardando factura en base de datos...');
+          console.log('📋 Datos de la factura:', facturaLocal);
+
+          const response = await fetch('/api/facturas', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(facturaLocal),
+          });
+
+          const responseData = await response.json();
+          console.log('📤 Respuesta del servidor:', responseData);
+
+          if (!response.ok) {
+            console.error(
+              '❌ Error guardando factura en base de datos:',
+              responseData
+            );
+            alert(
+              `Error guardando factura: ${
+                responseData.error || 'Error desconocido'
+              }`
+            );
+            return;
+          }
+
+          console.log('✅ Factura guardada exitosamente en base de datos');
+        } catch (error: any) {
+          console.error('❌ Error guardando factura:', error);
+          alert(
+            `Error guardando factura: ${error?.message || 'Error desconocido'}`
+          );
+        }
+
+        // Remover el pedido de la lista
+        setPedidos((prev) =>
+          prev.filter((p) => p.id !== pedidoSeleccionado.id)
+        );
+
+        setShowModal(false);
+        setPedidoSeleccionado(null);
+      } else {
+        alert(`Error al crear factura electrónica: ${data.error}`);
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      alert('Error al crear la factura electrónica');
+    } finally {
+      setCreatingElectronicInvoice(false);
+    }
+  };
+
   const crearFactura = async (datosFactura: Partial<Factura>) => {
     try {
       const response = await fetch('/api/facturas', {
@@ -185,14 +515,85 @@ export default function FacturacionPage() {
     }
   };
 
-  const imprimirFactura = () => {
+  const imprimirFactura = async () => {
     if (!facturaSeleccionada) return;
 
-    // Crear contenido HTML para imprimir
+    // Si es factura electrónica, obtener PDF de Factus
+    if (
+      facturaSeleccionada?.esElectronica &&
+      facturaSeleccionada?.facturaElectronica
+    ) {
+      try {
+        await imprimirFacturaElectronica();
+        return;
+      } catch (error) {
+        console.error('Error imprimiendo factura electrónica:', error);
+        alert(
+          'Error al obtener el PDF de la factura electrónica. Imprimiendo versión local...'
+        );
+        // Continuar con impresión local como fallback
+      }
+    }
+
+    // Impresión local para facturas normales o como fallback
+    imprimirFacturaLocal();
+  };
+
+  const imprimirFacturaElectronica = async () => {
+    if (!facturaSeleccionada?.facturaElectronica) return;
+
+    console.log('Factura seleccionada:', facturaSeleccionada);
+    console.log(
+      'Factura electrónica:',
+      facturaSeleccionada?.facturaElectronica
+    );
+    console.log('Número de factura:', facturaSeleccionada?.numero);
+    console.log(
+      'ID de factura Factus:',
+      facturaSeleccionada?.facturaElectronica?.id
+    );
+
+    try {
+      // Usar el ID de la factura de Factus en lugar del número local
+      const factusId = facturaSeleccionada?.facturaElectronica?.id;
+      if (!factusId) {
+        throw new Error('ID de factura de Factus no disponible');
+      }
+
+      // Obtener PDF de la factura electrónica desde Factus usando el ID de Factus
+      const response = await fetch(`/api/factus/invoices/${factusId}/pdf`);
+
+      if (!response.ok) {
+        throw new Error('Error al obtener el PDF');
+      }
+
+      // Crear blob y descargar/imprimir
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      // Abrir en nueva ventana para imprimir
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+
+      // Limpiar URL después de un tiempo
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+    } catch (error) {
+      console.error('Error obteniendo PDF de factura electrónica:', error);
+      throw error;
+    }
+  };
+
+  const imprimirFacturaLocal = () => {
     const contenidoImpresion = `
       <html>
         <head>
-          <title>Factura ${facturaSeleccionada.numero}</title>
+          <title>Factura ${facturaSeleccionada?.numero || 'N/A'}</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; }
             .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
@@ -213,17 +614,21 @@ export default function FacturacionPage() {
           
           <div class="info">
             <div>
-              <p><strong>Factura No:</strong> ${facturaSeleccionada.numero}</p>
-              <p><strong>Fecha:</strong> ${new Date(
-                facturaSeleccionada.fecha
-              ).toLocaleDateString()}</p>
+              <p><strong>Factura No:</strong> ${
+                facturaSeleccionada?.numero || 'N/A'
+              }</p>
+              <p><strong>Fecha:</strong> ${
+                facturaSeleccionada?.fecha
+                  ? new Date(facturaSeleccionada.fecha).toLocaleDateString()
+                  : 'N/A'
+              }</p>
             </div>
             <div>
               <p><strong>Cliente:</strong> ${
-                facturaSeleccionada.clienteNombre || 'Cliente'
+                (facturaSeleccionada as any)?.clienteNombre || 'Cliente'
               }</p>
               <p><strong>Mesa:</strong> ${
-                facturaSeleccionada.mesaNumero || 'N/A'
+                (facturaSeleccionada as any)?.mesaNumero || 'N/A'
               }</p>
             </div>
           </div>
@@ -239,10 +644,10 @@ export default function FacturacionPage() {
             </thead>
             <tbody>
               ${
-                (facturaSeleccionada.items || []).length > 0
-                  ? (facturaSeleccionada.items || [])
+                ((facturaSeleccionada as any)?.items || []).length > 0
+                  ? ((facturaSeleccionada as any)?.items || [])
                       .map(
-                        (item) => `
+                        (item: any) => `
                   <tr>
                     <td>${item.nombre}</td>
                     <td>${item.cantidad}</td>
@@ -258,19 +663,25 @@ export default function FacturacionPage() {
           </table>
           
           <div class="total">
-            <p>Subtotal: $${facturaSeleccionada.subtotal.toLocaleString()}</p>
+            <p>Subtotal: $${
+              (facturaSeleccionada as any)?.subtotal?.toLocaleString() || '0'
+            }</p>
             <p>IVA (19%): $${(
-              facturaSeleccionada.iva ||
-              facturaSeleccionada.impuestos ||
+              (facturaSeleccionada as any)?.iva ||
+              (facturaSeleccionada as any)?.impuestos ||
               0
             ).toLocaleString()}</p>
-            <p>Descuento: $${facturaSeleccionada.descuento.toLocaleString()}</p>
-            <p>TOTAL: $${facturaSeleccionada.total.toLocaleString()}</p>
+            <p>Descuento: $${
+              (facturaSeleccionada as any)?.descuento?.toLocaleString() || '0'
+            }</p>
+            <p>TOTAL: $${
+              (facturaSeleccionada as any)?.total?.toLocaleString() || '0'
+            }</p>
           </div>
           
           <div style="margin-top: 30px; text-align: center;">
             <p><strong>Método de Pago:</strong> ${
-              facturaSeleccionada.metodoPago
+              facturaSeleccionada?.metodoPago || 'N/A'
             }</p>
             <p>¡Gracias por su visita!</p>
           </div>
@@ -346,6 +757,33 @@ export default function FacturacionPage() {
               <p className="text-gray-600 mt-2">
                 Gestión de facturas y pagos del restaurante
               </p>
+
+              {/* Estado de autenticación Factus */}
+              {authStatus && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        authStatus.isAuthenticated
+                          ? 'bg-green-500'
+                          : 'bg-red-500'
+                      }`}
+                    ></span>
+                    <span className="text-sm font-medium text-gray-700">
+                      Factus API:{' '}
+                      {authStatus.isAuthenticated
+                        ? 'Conectado'
+                        : 'Desconectado'}
+                    </span>
+                    {authStatus.isAuthenticated && (
+                      <span className="text-xs text-gray-500">
+                        (Token válido por{' '}
+                        {Math.floor(authStatus.timeRemaining / 60)} min)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex space-x-3">
               <Button
@@ -358,9 +796,43 @@ export default function FacturacionPage() {
                 <Button onClick={handleNuevaFactura}>
                   + Nueva Factura (Desde Pedido)
                 </Button>
-                <Button onClick={handleNuevaFacturaManual} variant="outline">
+                <Button onClick={handleNuevaFacturaManual} variant="secondary">
                   + Factura Manual
                 </Button>
+                {authStatus?.isAuthenticated ? (
+                  <Button
+                    onClick={handleFacturaElectronica}
+                    variant="secondary"
+                    className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                  >
+                    ⚡ Factura Electrónica
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/factus/auth', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ action: 'authenticate' }),
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                          await cargarEstadoAutenticacion();
+                          alert('✅ Conectado a Factus API exitosamente');
+                        } else {
+                          alert('❌ Error al conectar: ' + data.message);
+                        }
+                      } catch (error) {
+                        alert('❌ Error de conexión');
+                      }
+                    }}
+                    variant="secondary"
+                    className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+                  >
+                    🔌 Conectar a Factus
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -396,15 +868,20 @@ export default function FacturacionPage() {
                         >
                           {getEstadoIcon(factura.estado)} {factura.estado}
                         </span>
+                        {factura.esElectronica && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            ⚡ Electrónica
+                          </span>
+                        )}
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
                         <div>
                           <span className="font-medium">Cliente:</span>{' '}
-                          {factura.clienteNombre || 'Sin cliente'}
+                          {(factura as any).clienteNombre || 'Sin cliente'}
                         </div>
                         <div>
                           <span className="font-medium">Mesa:</span>{' '}
-                          {factura.mesaNumero || 'Para llevar'}
+                          {(factura as any).mesaNumero || 'Para llevar'}
                         </div>
                         <div>
                           <span className="font-medium">Fecha:</span>{' '}
@@ -414,27 +891,64 @@ export default function FacturacionPage() {
                           <span className="font-medium">Método de Pago:</span>{' '}
                           {factura.metodoPago}
                         </div>
+                        {factura.esElectronica && (
+                          <>
+                            <div>
+                              <span className="font-medium">CUFE:</span>{' '}
+                              <span className="text-xs font-mono bg-gray-100 px-1 rounded text-gray-800">
+                                {factura.cufe?.slice(0, 8)}...
+                              </span>
+                            </div>
+                            <div>
+                              <span className="font-medium">Estado DIAN:</span>{' '}
+                              <span className="text-green-600 font-medium">
+                                Validada
+                              </span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-gray-900">
                         ${factura.total.toLocaleString()}
                       </p>
+                      {factura.esElectronica && factura.qrUrl && (
+                        <div className="mt-2">
+                          <img
+                            src={factura.qrUrl}
+                            alt="QR Factura"
+                            className="w-16 h-16 mx-auto"
+                          />
+                        </div>
+                      )}
                       <div className="flex space-x-2 mt-3">
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           onClick={() => handleVerFactura(factura)}
+                          className="text-gray-700 border-gray-300 hover:bg-gray-50"
                         >
                           Ver
                         </Button>
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           onClick={() => handleImprimirFactura(factura)}
+                          className="text-gray-700 border-gray-300 hover:bg-gray-50"
                         >
                           Imprimir
                         </Button>
+                        {factura.esElectronica && factura.qrUrl && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => window.open(factura.qrUrl, '_blank')}
+                            className="text-green-600 border-green-200 hover:bg-green-50"
+                          >
+                            QR
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -458,40 +972,69 @@ export default function FacturacionPage() {
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <span className="font-medium">Número:</span>{' '}
-                        {facturaSeleccionada.numero}
+                        <span className="font-medium text-gray-700">
+                          Número:
+                        </span>{' '}
+                        <span className="text-gray-900">
+                          {facturaSeleccionada?.numero || 'N/A'}
+                        </span>
                       </div>
                       <div>
-                        <span className="font-medium">Fecha:</span>{' '}
-                        {new Date(
-                          facturaSeleccionada.fecha
-                        ).toLocaleDateString()}
+                        <span className="font-medium text-gray-700">
+                          Fecha:
+                        </span>{' '}
+                        <span className="text-gray-900">
+                          {facturaSeleccionada?.fecha
+                            ? new Date(
+                                facturaSeleccionada.fecha
+                              ).toLocaleDateString()
+                            : 'N/A'}
+                        </span>
                       </div>
                       <div>
-                        <span className="font-medium">Cliente:</span>{' '}
-                        {facturaSeleccionada.clienteNombre}
+                        <span className="font-medium text-gray-700">
+                          Cliente:
+                        </span>{' '}
+                        <span className="text-gray-900">
+                          {(facturaSeleccionada as any)?.clienteNombre || 'N/A'}
+                        </span>
                       </div>
                       <div>
-                        <span className="font-medium">Mesa:</span>{' '}
-                        {facturaSeleccionada.mesaNumero || 'Para llevar'}
+                        <span className="font-medium text-gray-700">Mesa:</span>{' '}
+                        <span className="text-gray-900">
+                          {(facturaSeleccionada as any)?.mesaNumero ||
+                            'Para llevar'}
+                        </span>
                       </div>
                       <div>
-                        <span className="font-medium">Método de Pago:</span>{' '}
-                        {facturaSeleccionada.metodoPago}
+                        <span className="font-medium text-gray-700">
+                          Método de Pago:
+                        </span>{' '}
+                        <span className="text-gray-900">
+                          {(facturaSeleccionada as any)?.metodoPago || 'N/A'}
+                        </span>
                       </div>
                       <div>
-                        <span className="font-medium">Estado:</span>{' '}
-                        {facturaSeleccionada.estado}
+                        <span className="font-medium text-gray-700">
+                          Estado:
+                        </span>{' '}
+                        <span className="text-gray-900">
+                          {(facturaSeleccionada as any)?.estado || 'N/A'}
+                        </span>
                       </div>
                     </div>
                     <div>
-                      <h4 className="font-medium mb-2">Productos:</h4>
+                      <h4 className="font-medium mb-2 text-gray-700">
+                        Productos:
+                      </h4>
                       <div className="space-y-2">
-                        {(facturaSeleccionada.items || []).map(
-                          (item, index) => (
+                        {((facturaSeleccionada as any)?.items || []).map(
+                          (item: any, index: number) => (
                             <div key={index} className="flex justify-between">
-                              <span>{item.nombre}</span>
-                              <span>
+                              <span className="text-gray-900">
+                                {item.nombre}
+                              </span>
+                              <span className="text-gray-900">
                                 {item.cantidad} x $
                                 {item.precio.toLocaleString()} = $
                                 {(item.cantidad * item.precio).toLocaleString()}
@@ -503,39 +1046,52 @@ export default function FacturacionPage() {
                     </div>
                     <div className="border-t pt-4">
                       <div className="flex justify-between">
-                        <span>Subtotal:</span>
-                        <span>
-                          ${facturaSeleccionada.subtotal.toLocaleString()}
+                        <span className="text-gray-700">Subtotal:</span>
+                        <span className="text-gray-900">
+                          $
+                          {(
+                            facturaSeleccionada as any
+                          )?.subtotal?.toLocaleString() || '0'}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>IVA (19%):</span>
-                        <span>
+                        <span className="text-gray-700">IVA (19%):</span>
+                        <span className="text-gray-900">
                           $
                           {(
-                            facturaSeleccionada.iva ||
-                            facturaSeleccionada.impuestos ||
+                            (facturaSeleccionada as any)?.iva ||
+                            (facturaSeleccionada as any)?.impuestos ||
                             0
                           ).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Descuento:</span>
-                        <span>
-                          ${facturaSeleccionada.descuento.toLocaleString()}
+                        <span className="text-gray-700">Descuento:</span>
+                        <span className="text-gray-900">
+                          $
+                          {(
+                            facturaSeleccionada as any
+                          )?.descuento?.toLocaleString() || '0'}
                         </span>
                       </div>
                       <div className="flex justify-between font-bold text-lg">
-                        <span>TOTAL:</span>
-                        <span>
-                          ${facturaSeleccionada.total.toLocaleString()}
+                        <span className="text-gray-900">TOTAL:</span>
+                        <span className="text-gray-900">
+                          $
+                          {(
+                            facturaSeleccionada as any
+                          )?.total?.toLocaleString() || '0'}
                         </span>
                       </div>
                     </div>
                   </div>
                 )}
                 <div className="flex justify-end mt-6">
-                  <Button variant="outline" onClick={() => setShowModal(false)}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowModal(false)}
+                    className="text-gray-700 border-gray-300 hover:bg-gray-50"
+                  >
                     Cerrar
                   </Button>
                 </div>
@@ -549,7 +1105,11 @@ export default function FacturacionPage() {
                   ¿Deseas imprimir la factura {facturaSeleccionada?.numero}?
                 </p>
                 <div className="flex justify-end space-x-3">
-                  <Button variant="outline" onClick={() => setShowModal(false)}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowModal(false)}
+                    className="text-gray-700 border-gray-300 hover:bg-gray-50"
+                  >
                     Cancelar
                   </Button>
                   <Button onClick={imprimirFactura}>Imprimir</Button>
@@ -562,7 +1122,7 @@ export default function FacturacionPage() {
                     Nueva Factura - Seleccionar Pedido
                   </h3>
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     onClick={() => setModalType('manual')}
                   >
@@ -683,11 +1243,12 @@ export default function FacturacionPage() {
                         <div className="flex justify-end space-x-3">
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => {
                               setPedidoSeleccionado(null);
                               setShowModal(false);
                             }}
+                            className="text-gray-700 border-gray-300 hover:bg-gray-50"
                           >
                             Cancelar
                           </Button>
@@ -695,11 +1256,195 @@ export default function FacturacionPage() {
                             type="button"
                             onClick={crearFacturaDesdePedido}
                           >
-                            Crear Factura
+                            Crear Factura Normal
                           </Button>
+                          {authStatus?.isAuthenticated ? (
+                            <Button
+                              type="button"
+                              onClick={handleFacturaElectronica}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              ⚡ Crear Factura Electrónica
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(
+                                    '/api/factus/auth',
+                                    {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify({
+                                        action: 'authenticate',
+                                      }),
+                                    }
+                                  );
+                                  const data = await response.json();
+                                  if (data.success) {
+                                    await cargarEstadoAutenticacion();
+                                    alert(
+                                      '✅ Conectado a Factus API. Ahora puedes crear facturas electrónicas.'
+                                    );
+                                  } else {
+                                    alert(
+                                      '❌ Error al conectar: ' + data.message
+                                    );
+                                  }
+                                } catch (error) {
+                                  alert('❌ Error de conexión');
+                                }
+                              }}
+                              className="bg-orange-600 hover:bg-orange-700"
+                            >
+                              🔌 Conectar a Factus
+                            </Button>
+                          )}
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+            ) : modalType === 'electronica' ? (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Factura Electrónica - Pedido #{pedidoSeleccionado?.id}
+                  </h3>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setModalType('nueva')}
+                  >
+                    ← Volver
+                  </Button>
+                </div>
+
+                {!authStatus?.isAuthenticated ? (
+                  <div className="text-center py-8">
+                    <div className="text-red-600 mb-4">
+                      <svg
+                        className="w-12 h-12 mx-auto mb-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-gray-600 mb-4">
+                      No hay conexión con la API de Factus
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      La facturación electrónica requiere autenticación con
+                      Factus API
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Información del pedido */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="font-medium text-gray-900 mb-3">
+                        Información del Pedido
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium">Cliente:</span>{' '}
+                          {pedidoSeleccionado?.cliente?.nombre || 'Sin cliente'}
+                        </div>
+                        <div>
+                          <span className="font-medium">Mesa:</span>{' '}
+                          {pedidoSeleccionado?.mesa?.numero || 'Para llevar'}
+                        </div>
+                        <div>
+                          <span className="font-medium">Total:</span> $
+                          {pedidoSeleccionado?.total?.toLocaleString()}
+                        </div>
+                        <div>
+                          <span className="font-medium">Estado:</span>{' '}
+                          {pedidoSeleccionado?.estado}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Configuración de rango de numeración */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Rango de Numeración
+                      </label>
+                      <select
+                        value={selectedRangeId || ''}
+                        onChange={(e) =>
+                          setSelectedRangeId(parseInt(e.target.value))
+                        }
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Seleccionar rango...</option>
+                        {Array.isArray(numberingRanges) &&
+                          numberingRanges.map((rango) => (
+                            <option key={rango.id} value={rango.id}>
+                              {rango.prefix} ({rango.from} - {rango.to}) -{' '}
+                              {rango.is_active ? 'Activo' : 'Inactivo'}
+                            </option>
+                          ))}
+                      </select>
+                      {!selectedRangeId && (
+                        <p className="text-sm text-red-600 mt-1">
+                          Debe seleccionar un rango de numeración
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Información adicional */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-900 mb-2">
+                        Información de Facturación Electrónica
+                      </h4>
+                      <ul className="text-sm text-blue-800 space-y-1">
+                        <li>
+                          • La factura será enviada a la DIAN automáticamente
+                        </li>
+                        <li>• Se generará un CUFE único para la factura</li>
+                        <li>• Se creará un código QR para validación</li>
+                        <li>• El cliente recibirá la factura por email</li>
+                      </ul>
+                    </div>
+
+                    {/* Botones de acción */}
+                    <div className="flex justify-end space-x-3">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setShowModal(false)}
+                        className="text-gray-700 border-gray-300 hover:bg-gray-50"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={crearFacturaElectronica}
+                        disabled={!selectedRangeId || creatingElectronicInvoice}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {creatingElectronicInvoice ? (
+                          <>
+                            <LoadingSpinner size="sm" />
+                            Creando...
+                          </>
+                        ) : (
+                          '⚡ Crear Factura Electrónica'
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -710,9 +1455,10 @@ export default function FacturacionPage() {
                     Nueva Factura Manual
                   </h3>
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     onClick={() => setModalType('nueva')}
+                    className="text-gray-700 border-gray-300 hover:bg-gray-50"
                   >
                     Desde Pedido
                   </Button>
@@ -762,7 +1508,7 @@ export default function FacturacionPage() {
                         <input
                           type="number"
                           name="mesaNumero"
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         />
                       </div>
                     </div>
@@ -773,10 +1519,12 @@ export default function FacturacionPage() {
                         </label>
                         <select
                           name="metodoPago"
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                           required
                         >
-                          <option value="">Seleccionar...</option>
+                          <option value="" className="text-gray-500">
+                            Seleccionar...
+                          </option>
                           <option value="EFECTIVO">Efectivo</option>
                           <option value="TARJETA">Tarjeta</option>
                           <option value="TRANSFERENCIA">Transferencia</option>
@@ -791,7 +1539,7 @@ export default function FacturacionPage() {
                           name="descuento"
                           defaultValue="0"
                           step="0.01"
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         />
                       </div>
                     </div>
@@ -817,7 +1565,7 @@ export default function FacturacionPage() {
                             type="number"
                             name="itemCantidad"
                             defaultValue="1"
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                             required
                           />
                         </div>
@@ -829,7 +1577,7 @@ export default function FacturacionPage() {
                             type="number"
                             name="itemPrecio"
                             step="0.01"
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                             required
                           />
                         </div>
@@ -843,7 +1591,7 @@ export default function FacturacionPage() {
                         type="number"
                         name="subtotal"
                         step="0.01"
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         required
                       />
                     </div>
@@ -853,7 +1601,7 @@ export default function FacturacionPage() {
                       type="button"
                       variant="secondary"
                       onClick={() => setShowModal(false)}
-                      className="flex-1"
+                      className="flex-1 text-gray-700 border-gray-300 hover:bg-gray-50"
                     >
                       Cancelar
                     </Button>
