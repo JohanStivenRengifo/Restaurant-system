@@ -172,6 +172,22 @@ classDiagram
 #### Diagrama de Secuencia - Factory Method
 
 ```mermaid
+sequenceDiagram
+    participant Cliente
+    participant EntradaFactory
+    participant Entrada as "Objeto Entrada"
+
+    Cliente->>EntradaFactory: procesarPlatillo()
+    activate EntradaFactory
+    EntradaFactory->>EntradaFactory: crearPlatillo()
+    activate EntradaFactory
+    EntradaFactory-->>Cliente: new Entrada()
+    deactivate EntradaFactory
+    EntradaFactory->>Entrada: Crear instancia
+    EntradaFactory-->>Cliente: Retorna platillo (Entrada)
+    deactivate EntradaFactory
+    Cliente->>EntradaFactory: console.log("Creando Entrada: [nombre]")
+
 
 ```
 
@@ -299,6 +315,19 @@ classDiagram
 #### Diagrama de Secuencia - Abstract Factory
 
 ```mermaid
+sequenceDiagram
+    participant Cliente
+    participant TemaClaroFactory
+    participant BotonClaro
+
+    Cliente->>TemaClaroFactory: crearBoton(texto, tipo)
+    activate TemaClaroFactory
+    TemaClaroFactory->>BotonClaro: new BotonClaro(texto, tipo)
+    activate BotonClaro
+    BotonClaro-->>TemaClaroFactory: Instancia de BotonClaro
+    deactivate BotonClaro
+    TemaClaroFactory-->>Cliente: Retorna BotonClaro
+    deactivate TemaClaroFactory
 
 ```
 
@@ -413,6 +442,22 @@ classDiagram
 #### Diagrama de Secuencia - Prototype
 
 ```mermaid
+sequenceDiagram
+    participant Cliente
+    participant Platillo
+    participant Variacion as "Nuevo Platillo (clon)"
+
+    Cliente->>Platillo: crearVariacion(nombreVariacion, modificaciones)
+    activate Platillo
+    Platillo->>Platillo: clonar()
+    activate Platillo
+    Platillo-->>Platillo: return nuevo objeto (Variacion)
+    deactivate Platillo
+
+    Platillo->>Variacion: Asigna nombre y modificaciones
+    Variacion-->>Platillo: Retorna objeto modificado
+    Platillo-->>Cliente: Retorna nueva variación del platillo
+    deactivate Platillo
 
 ```
 
@@ -545,6 +590,39 @@ classDiagram
 #### Diagrama de Secuencia - Builder
 
 ```mermaid
+sequenceDiagram
+    participant Cliente
+    participant PedidoBuilder
+    participant Pedido as "Objeto Pedido (interno)"
+    participant Platillo as "PlatilloPedido"
+
+    Cliente->>PedidoBuilder: new PedidoBuilder()
+    activate PedidoBuilder
+    PedidoBuilder->>Pedido: Inicializa pedido parcial con id, fecha, etc.
+    deactivate PedidoBuilder
+
+    Cliente->>PedidoBuilder: configurarCliente(clienteId)
+    activate PedidoBuilder
+    PedidoBuilder->>Pedido: Asigna clienteId
+    PedidoBuilder-->>Cliente: Retorna this (encadenamiento)
+    deactivate PedidoBuilder
+
+    Cliente->>PedidoBuilder: agregarPlatillo(platilloId, nombre, precio, cantidad)
+    activate PedidoBuilder
+    PedidoBuilder->>Platillo: Crea objeto PlatilloPedido
+    activate Platillo
+    Platillo-->>PedidoBuilder: Instancia PlatilloPedido
+    deactivate Platillo
+    PedidoBuilder->>Pedido: Agrega platillo a pedido.platillos[]
+    PedidoBuilder->>PedidoBuilder: calcularTotal()
+    PedidoBuilder-->>Cliente: Retorna this (encadenamiento)
+    deactivate PedidoBuilder
+
+    Cliente->>PedidoBuilder: build()
+    activate PedidoBuilder
+    PedidoBuilder->>Pedido: Verifica tipo de pedido
+    PedidoBuilder-->>Cliente: Retorna PedidoCompleto
+    deactivate PedidoBuilder
 
 ```
 
