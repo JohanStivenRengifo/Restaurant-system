@@ -330,36 +330,41 @@ stateDiagram-v2
 
 ```mermaid
 graph TB
-    subgraph "Capa de Presentación"
-        UI[Interfaz de Usuario<br/>- Formulario de factura<br/>- Lista de facturas<br/>- Descarga de PDFs]
-        API[API Routes<br/>- /api/factus/auth<br/>- /api/factus/invoices<br/>- /api/factus/invoices/[id]/pdf]
+    %% Capa de Presentación
+    subgraph [translate:Capa de Presentación]
+        UI["[translate:Interfaz de Usuario]\n- [translate:Formulario de factura]\n- [translate:Lista de facturas]\n- [translate:Descarga de PDFs]"]
+        API["[translate:API Routes]\n- /api/factus/auth\n- /api/factus/invoices\n- /api/factus/invoices/[id]/pdf"]
     end
     
-    subgraph "Capa de Lógica de Negocio"
-        subgraph "Patrones de Facturación"
-            Builder[FactusInvoiceBuilder<br/>- Construcción paso a paso<br/>- Validación integrada<br/>- Fluent interface]
-            Factory[FactusInvoiceServiceFactory<br/>- Creación para diferentes entornos<br/>- Configuración centralizada]
-            Adapter[FactusAdapterService<br/>- Conversión de datos<br/>- Mapeo de formatos<br/>- Validación previa]
+    %% Capa de Lógica de Negocio
+    subgraph [translate:Capa de Lógica de Negocio]
+        subgraph [translate:Patrones de Facturación]
+            Builder["FactusInvoiceBuilder\n- [translate:Construcción paso a paso]\n- [translate:Validación integrada]\n- [translate:Fluent interface]"]
+            Factory["FactusInvoiceServiceFactory\n- [translate:Creación para diferentes entornos]\n- [translate:Configuración centralizada]"]
+            Adapter["FactusAdapterService\n- [translate:Conversión de datos]\n- [translate:Mapeo de formatos]\n- [translate:Validación previa]"]
         end
         
-        subgraph "Servicios de Facturación"
-            AuthService[FactusAuthService<br/>- Gestión de tokens OAuth2<br/>- Renovación automática<br/>- Singleton pattern]
-            InvoiceService[FactusInvoiceService<br/>- Creación de facturas<br/>- Validación<br/>- Descarga de PDFs]
+        subgraph [translate:Servicios de Facturación]
+            AuthService["FactusAuthService\n- [translate:Gestión de tokens OAuth2]\n- [translate:Renovación automática]\n- [translate:Singleton pattern]"]
+            InvoiceService["FactusInvoiceService\n- [translate:Creación de facturas]\n- [translate:Validación]\n- [translate:Descarga de PDFs]"]
         end
     end
     
-    subgraph "Capa de Integración Externa"
-        FactusAPI[Factus API<br/>- Autenticación OAuth2<br/>- Validación de facturas<br/>- Generación de CUFE<br/>- Descarga de PDFs]
-        DIAN[DIAN<br/>- Validación fiscal<br/>- Aprobación de facturas<br/>- Generación de CUFE]
+    %% Capa de Integración Externa
+    subgraph [translate:Capa de Integración Externa]
+        FactusAPI["Factus API\n- [translate:Autenticación OAuth2]\n- [translate:Validación de facturas]\n- [translate:Generación de CUFE]\n- [translate:Descarga de PDFs]"]
+        DIAN["DIAN\n- [translate:Validación fiscal]\n- [translate:Aprobación de facturas]\n- [translate:Generación de CUFE]"]
     end
     
-    subgraph "Capa de Datos"
-        Database[(Base de Datos<br/>PostgreSQL)]
-        Cache[(Caché<br/>Tokens de acceso)]
+    %% Capa de Datos
+    subgraph [translate:Capa de Datos]
+        Database["[translate:Base de Datos]\n[translate:PostgreSQL]"]
+        Cache["[translate:Caché]\n[translate:Tokens de acceso]"]
     end
     
-    subgraph "Configuración"
-        Env[Variables de Entorno<br/>- Client ID/Secret<br/>- API URLs<br/>- Configuración DIAN]
+    %% Configuración
+    subgraph [translate:Configuración]
+        Env["[translate:Variables de Entorno]\n- [translate:Client ID/Secret]\n- [translate:API URLs]\n- [translate:Configuración DIAN]"]
     end
     
     %% Conexiones principales
@@ -367,20 +372,15 @@ graph TB
     API --> Builder
     API --> Factory
     API --> Adapter
-    
     Builder --> InvoiceService
     Factory --> InvoiceService
     Adapter --> Builder
-    
     InvoiceService --> AuthService
     AuthService --> FactusAPI
     InvoiceService --> FactusAPI
-    
     FactusAPI --> DIAN
-    
     AuthService --> Cache
     InvoiceService --> Database
-    
     AuthService --> Env
     InvoiceService --> Env
     
@@ -393,9 +393,8 @@ graph TB
     
     class UI,API presentacion
     class Builder,Factory,Adapter,AuthService,InvoiceService logica
-    class FactusAPI,DIAN integracion
-    class Database,Cache datos
-    class Env config
+    class FactusAPI,DI
+
 ```
 
 #### 5. Diagrama de Secuencia - Manejo de Errores en Facturación
