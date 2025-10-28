@@ -781,6 +781,57 @@ classDiagram
     AdaptadorFactory --> SistemaPagoInterno : creates
 ```
 
+#### Diagrama de Clases - Adapter
+
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant AdaptadorCripto
+    participant ServicioCriptoExterno
+    
+    Cliente->>AdaptadorCripto: procesarPago(monto, metodo)
+    activate AdaptadorCripto
+    
+    Note over AdaptadorCripto: Define walletAddress
+    
+    alt metodo === 'BITCOIN'
+        AdaptadorCripto->>ServicioCriptoExterno: pagarConBitcoin(monto, walletAddress)
+        activate ServicioCriptoExterno
+        ServicioCriptoExterno-->>AdaptadorCripto: resultado {success, txHash, error}
+        deactivate ServicioCriptoExterno
+    else metodo === 'ETHEREUM'
+        AdaptadorCripto->>ServicioCriptoExterno: pagarConEthereum(monto, walletAddress)
+        activate ServicioCriptoExterno
+        ServicioCriptoExterno-->>AdaptadorCripto: resultado {success, txHash, error}
+        deactivate ServicioCriptoExterno
+    end
+    
+    alt Pago exitoso
+        AdaptadorCripto->>AdaptadorCripto: Construir ResultadoPago exitoso
+        Note right of AdaptadorCripto: exito: true<br/>transaccionId: txHash<br/>mensaje: "Pago procesado exitosamente"
+    else Error en pago
+        AdaptadorCripto->>AdaptadorCripto: Construir ResultadoPago con error
+        Note right of AdaptadorCripto: exito: false<br/>mensaje: "Error en pago"<br/>codigoError: error
+    end
+    
+    AdaptadorCripto-->>Cliente: ResultadoPago
+    deactivate AdaptadorCripto
+    
+    Note over Cliente,ServicioCriptoExterno: En caso de excepción no controlada
+    
+    Cliente->>AdaptadorCripto: procesarPago(monto, metodo)
+    activate AdaptadorCripto
+    AdaptadorCripto->>ServicioCriptoExterno: pagarConBitcoin/Ethereum()
+    activate ServicioCriptoExterno
+    ServicioCriptoExterno--xAdaptadorCripto: Error/Excepción
+    deactivate ServicioCriptoExterno
+    
+    AdaptadorCripto->>AdaptadorCripto: Capturar excepción (catch)
+    Note right of AdaptadorCripto: exito: false<br/>mensaje: "Error interno procesando pago"<br/>codigoError: "INTERNAL_ERROR"
+    AdaptadorCripto-->>Cliente: ResultadoPago (error)
+    deactivate AdaptadorCripto
+```
+
 **Código Principal**:
 ```typescript
 export class AdaptadorCripto implements SistemaPagoInterno {
