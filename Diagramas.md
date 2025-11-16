@@ -2220,4 +2220,225 @@ sequenceDiagram
     ReporteVentas->>Cliente: contenido Excel
 ```
 
+---
+
+## Diagrama de Despliegue - Railway
+
+### Diagrama de Despliegue en Railway Platform
+
+Este diagrama muestra la arquitectura de despliegue del sistema en uno de los servidores de Railway, incluyendo los servicios, bases de datos y conexiones externas.
+
+```mermaid
+graph TB
+    subgraph "Railway Platform"
+        subgraph "Proyecto: repository-global"
+            subgraph "Environment: Production"
+                subgraph "Service: ObraBlanca-POS"
+                    NextJSApp["Next.js Application<br/>- Node.js 20.x<br/>- Next.js 16.0<br/>- Puerto: Dinámico<br/>- Build: npm run build<br/>- Start: npm start"]
+                    
+                    EnvVars["Variables de Entorno<br/>- DATABASE_URL<br/>- NEXTAUTH_SECRET<br/>- FACTUS_CLIENT_ID<br/>- FACTUS_CLIENT_SECRET<br/>- FACTUS_API_URL<br/>- PORT"]
+                end
+                
+                subgraph "Service: PostgreSQL Database"
+                    PostgreSQL["PostgreSQL 15<br/>- Database: restaurant_db<br/>- Usuario: postgres<br/>- Almacenamiento: Persistente<br/>- Backup: Automático"]
+                    
+                    PrismaClient["Prisma Client<br/>- ORM Layer<br/>- Migrations<br/>- Schema Management"]
+                end
+                
+                subgraph "Service: Conecta2-Telecomunicaciones"
+                    CommsService["Servicio de Comunicaciones<br/>- SMS/Email<br/>- Notificaciones<br/>- Webhooks"]
+                end
+                
+                subgraph "Service: MiComercio360"
+                    CommerceService["Servicio de Comercio<br/>- Integraciones<br/>- APIs Externas"]
+                end
+            end
+        end
+        
+        subgraph "Railway Network"
+            RailwayNet["Railway Private Network<br/>- DNS Interno<br/>- Service Discovery<br/>- Load Balancing"]
+        end
+        
+        subgraph "Railway Resources"
+            RailwayVolume["Persistent Volumes<br/>- Database Storage<br/>- Backup Storage"]
+            RailwayLogs["Logs & Monitoring<br/>- Build Logs<br/>- Runtime Logs<br/>- Metrics"]
+        end
+    end
+    
+    subgraph "Internet"
+        Users["Usuarios<br/>- Navegadores Web<br/>- Mobile Apps"]
+        
+        Domain["Dominio Custom<br/>- HTTPS/SSL<br/>- Railway Domain<br/>- Custom Domain"]
+    end
+    
+    subgraph "External Services"
+        FactusAPI["Factus API<br/>- OAuth2 Auth<br/>- Invoice Management<br/>- PDF Generation<br/>- DIAN Integration"]
+        
+        DIAN["DIAN<br/>- Validación Fiscal<br/>- CUFE Generation"]
+    end
+    
+    subgraph "CI/CD Pipeline"
+        GitHub["GitHub Repository<br/>- Source Code<br/>- Auto Deploy<br/>- Branch Protection"]
+        
+        RailwayBuild["Railway Build<br/>- Docker Build<br/>- npm install<br/>- npm run build<br/>- Prisma Generate"]
+    end
+    
+    %% Conexiones Usuarios
+    Users -->|HTTPS| Domain
+    Domain -->|Proxy| NextJSApp
+    
+    %% Conexiones Internas Railway
+    NextJSApp -->|DATABASE_URL| PostgreSQL
+    NextJSApp -->|Internal Network| CommsService
+    NextJSApp -->|Internal Network| CommerceService
+    NextJSApp -->|Read/Write| RailwayVolume
+    
+    PostgreSQL -->|Storage| RailwayVolume
+    PostgreSQL -->|ORM| PrismaClient
+    PrismaClient -->|Connection| NextJSApp
+    
+    NextJSApp -->|Environment| EnvVars
+    NextJSApp -->|Logs| RailwayLogs
+    NextJSApp -->|Network| RailwayNet
+    
+    %% Conexiones Externas
+    NextJSApp -->|HTTPS API| FactusAPI
+    FactusAPI -->|API| DIAN
+    
+    CommsService -->|SMTP/SMS| ExternalServices[Servicios Externos]
+    
+    %% CI/CD
+    GitHub -->|Webhook| RailwayBuild
+    RailwayBuild -->|Deploy| NextJSApp
+    RailwayBuild -->|Deploy| PostgreSQL
+    
+    %% Estilos
+    classDef railwayService fill:#0f0f23,stroke:#6366f1,stroke-width:2px,color:#fff
+    classDef database fill:#336791,stroke:#4a90e2,stroke-width:2px,color:#fff
+    classDef external fill:#ff6b6b,stroke:#ee5a6f,stroke-width:2px,color:#fff
+    classDef network fill:#4ecdc4,stroke:#45b7aa,stroke-width:2px,color:#fff
+    classDef user fill:#95e1d3,stroke:#6bcfbf,stroke-width:2px
+    
+    class NextJSApp,CommsService,CommerceService railwayService
+    class PostgreSQL,PrismaClient database
+    class FactusAPI,DIAN,ExternalServices external
+    class RailwayNet,RailwayVolume,RailwayLogs network
+    class Users,Domain user
+```
+
+### Componentes del Despliegue
+
+#### 1. **Next.js Application (ObraBlanca-POS)**
+- **Tecnología**: Node.js 20.x, Next.js 18.0
+- **Build**: `npm run build`
+- **Start**: `npm start`
+- **Puerto**: Dinámico (asignado por Railway)
+- **Variables de Entorno**: 
+  - `DATABASE_URL`: Conexión a PostgreSQL
+  - `NEXTAUTH_SECRET`: Secret para autenticación
+  - `FACTUS_CLIENT_ID` / `FACTUS_CLIENT_SECRET`: Credenciales Factus API
+  - `FACTUS_API_URL`: URL de la API de Factus
+  - `PORT`: Puerto de la aplicación
+
+#### 2. **PostgreSQL Database**
+- **Versión**: PostgreSQL 15
+- **Base de Datos**: `restaurant_db`
+- **Características**:
+  - Almacenamiento persistente
+  - Backups automáticos
+  - Acceso mediante Prisma ORM
+  - Migrations automáticas
+
+#### 3. **Servicios Adicionales**
+- **Conecta2-Telecomunicaciones**: Servicio de comunicaciones (SMS/Email)
+- **MiComercio360**: Servicio de integraciones comerciales
+
+#### 4. **Red y Recursos**
+- **Railway Private Network**: Red interna para comunicación entre servicios
+- **Persistent Volumes**: Almacenamiento para base de datos y backups
+- **Logs & Monitoring**: Sistema de logs y métricas integrado
+
+### Flujo de Despliegue
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant GitHub as GitHub Repo
+    participant RailwayCI as Railway CI/CD
+    participant RailwayBuild as Railway Build
+    participant RailwayDeploy as Railway Deploy
+    participant NextJS as Next.js App
+    participant PostgreSQL as PostgreSQL DB
+    
+    Dev->>GitHub: Push código
+    GitHub->>RailwayCI: Webhook trigger
+    RailwayCI->>RailwayBuild: Iniciar build
+    
+    RailwayBuild->>RailwayBuild: npm install
+    RailwayBuild->>RailwayBuild: npm run build
+    RailwayBuild->>RailwayBuild: prisma generate
+    RailwayBuild->>RailwayBuild: Validar build
+    
+    RailwayBuild->>RailwayDeploy: Build exitoso
+    RailwayDeploy->>NextJS: Desplegar aplicación
+    RailwayDeploy->>PostgreSQL: Verificar conexión DB
+    
+    NextJS->>PostgreSQL: Conectar con DATABASE_URL
+    PostgreSQL-->>NextJS: Conexión establecida
+    
+    NextJS->>NextJS: Verificar migrations
+    NextJS->>PostgreSQL: Ejecutar migrations si es necesario
+    
+    NextJS-->>RailwayDeploy: Aplicación lista
+    RailwayDeploy-->>Dev: Deploy completado
+    
+    Note over NextJS: Aplicación accesible en dominio Railway
+```
+
+### Configuración de Variables de Entorno
+
+Las siguientes variables de entorno deben configurarse en Railway:
+
+```env
+# Base de Datos
+DATABASE_URL=postgresql://user:password@host:port/database?sslmode=require
+
+# Next.js
+NEXTAUTH_SECRET=your-secret-key
+NODE_ENV=production
+PORT=3000
+
+# Factus API
+FACTUS_CLIENT_ID=your-client-id
+FACTUS_CLIENT_SECRET=your-client-secret
+FACTUS_API_URL=https://api.factus.com.co
+FACTUS_REDIRECT_URI=https://your-app.railway.app/api/auth/callback
+
+# Opcional
+NEXT_PUBLIC_APP_URL=https://your-app.railway.app
+```
+
+### Características del Despliegue en Railway
+
+#### ✅ **Ventajas**
+- **Despliegue Automático**: CI/CD integrado con GitHub
+- **Escalabilidad**: Escalado automático según carga
+- **Monitoreo**: Logs y métricas integradas
+- **Backups**: Backups automáticos de base de datos
+- **SSL/HTTPS**: Certificados SSL automáticos
+- **Red Privada**: Comunicación segura entre servicios
+- **Variables de Entorno**: Gestión centralizada de configuración
+
+#### 🔒 **Seguridad**
+- Variables de entorno encriptadas
+- Red privada entre servicios
+- Conexiones SSL/TLS
+- Autenticación OAuth2 para APIs externas
+
+#### 📊 **Monitoreo**
+- Logs de aplicación en tiempo real
+- Métricas de rendimiento
+- Alertas automáticas
+- Historial de deployments
+
 ----

@@ -13,7 +13,11 @@
    - [Adapter](#adapter)
    - [Bridge](#bridge)
    - [Proxy](#proxy)
-3. [Facturación Electrónica](#facturación-electrónica)
+3. [Patrones de Comportamiento](#patrones-de-comportamiento)
+   - [Chain of Responsibility](#chain-of-responsibility)
+4. [Diagrama de Despliegue](#diagrama-de-despliegue)
+   - [Despliegue en Railway](#despliegue-en-railway)
+5. [Facturación Electrónica](#facturación-electrónica)
    - [Integración con Factus API](#integración-con-factus-api)
    - [Patrones Aplicados](#patrones-aplicados)
 
@@ -1588,6 +1592,455 @@ Caso de uso real: Sistema de restaurante donde solo gerentes y administradores p
 - Control de acceso al inventario con validación de permisos
 - Caché de pedidos para mejorar rendimiento
 - Generación de reportes bajo demanda con caché
+
+---
+
+## Patrones de Comportamiento
+
+### Chain of Responsibility
+
+**Propósito**: Pasar solicitudes de validación a lo largo de una cadena de manejadores. Al recibir una solicitud, cada manejador decide si la procesa o si la pasa al siguiente manejador de la cadena.
+
+**Implementación**: Se implementó para validar pedidos mediante una cadena de validadores que procesan diferentes aspectos del pedido de forma secuencial.
+
+#### Diagrama de Clases - Chain of Responsibility
+
+```mermaid
+classDiagram
+    class ValidadorPedidoHandler {
+        <<abstract>>
+        #siguiente: ValidadorPedidoHandler
+        +setSiguiente(handler) ValidadorPedidoHandler
+        +validar(contexto)* ResultadoValidacion
+        #procesar(contexto)* ResultadoValidacion
+    }
+    
+    class ValidadorPlatillosHandler {
+        -db: PrismaDatabaseService
+        #procesar(contexto) ResultadoValidacion
+    }
+    
+    class ValidadorTotalHandler {
+        -db: PrismaDatabaseService
+        #procesar(contexto) ResultadoValidacion
+    }
+    
+    class ValidadorMesaHandler {
+        -db: PrismaDatabaseService
+        #procesar(contexto) ResultadoValidacion
+    }
+    
+    class ValidadorClienteHandler {
+        -db: PrismaDatabaseService
+        #procesar(contexto) ResultadoValidacion
+    }
+    
+    class ValidadorDomicilioHandler {
+        #procesar(contexto) ResultadoValidacion
+    }
+    
+    class CadenaValidacionPedido {
+        -cadena: ValidadorPedidoHandler
+        +validar(pedido) ResultadoValidacionCompleto
+    }
+    
+    class ContextoValidacion {
+        +pedido: CrearPedidoRequest
+        +platillosConPrecio: Array
+        +totalCalculado: number
+        +errores: string[]
+    }
+    
+    class ResultadoValidacion {
+        +valido: boolean
+        +errores: string[]
+    }
+    
+    class PedidoService {
+        -cadenaValidacion: CadenaValidacionPedido
+        +crearPedido(datos) Promise~ApiResponse~
+    }
+    
+    ValidadorPedidoHandler <|-- ValidadorPlatillosHandler
+    ValidadorPedidoHandler <|-- ValidadorTotalHandler
+    ValidadorPedidoHandler <|-- ValidadorMesaHandler
+    ValidadorPedidoHandler <|-- ValidadorClienteHandler
+    ValidadorPedidoHandler <|-- ValidadorDomicilioHandler
+    
+    ValidadorPedidoHandler --> ValidadorPedidoHandler : siguiente
+    ValidadorPedidoHandler --> ContextoValidacion : uses
+    ValidadorPedidoHandler --> ResultadoValidacion : returns
+    
+    CadenaValidacionPedido --> ValidadorPlatillosHandler : creates
+    CadenaValidacionPedido --> ValidadorTotalHandler : creates
+    CadenaValidacionPedido --> ValidadorMesaHandler : creates
+    CadenaValidacionPedido --> ValidadorClienteHandler : creates
+    CadenaValidacionPedido --> ValidadorDomicilioHandler : creates
+    CadenaValidacionPedido --> ValidadorPedidoHandler : chains
+    
+    PedidoService --> CadenaValidacionPedido : uses
+    
+    ValidadorPlatillosHandler --> PrismaDatabaseService : uses
+    ValidadorTotalHandler --> PrismaDatabaseService : uses
+    ValidadorMesaHandler --> PrismaDatabaseService : uses
+    ValidadorClienteHandler --> PrismaDatabaseService : uses
+```
+
+#### Diagrama de Secuencia - Chain of Responsibility
+
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant PedidoService
+    participant CadenaValidacion
+    participant ValidadorPlatillos
+    participant ValidadorTotal
+    participant ValidadorMesa
+    participant ValidadorCliente
+    participant ValidadorDomicilio
+    
+    Cliente->>PedidoService: crearPedido(datos)
+    activate PedidoService
+    
+    PedidoService->>CadenaValidacion: validar(datos)
+    activate CadenaValidacion
+    
+    CadenaValidacion->>CadenaValidacion: Crear contexto con pedido
+    Note over CadenaValidacion: contexto: {pedido, errores: []}
+    
+    CadenaValidacion->>ValidadorPlatillos: validar(contexto)
+    activate ValidadorPlatillos
+    
+    ValidadorPlatillos->>ValidadorPlatillos: procesar(contexto)
+    Note over ValidadorPlatillos: Valida platillos existentes,<br/>activos, cantidades
+    
+    alt Validación exitosa
+        ValidadorPlatillos-->>ValidadorPlatillos: {valido: true, errores: []}
+        
+        ValidadorPlatillos->>ValidadorTotal: validar(contexto)
+        activate ValidadorTotal
+        
+        ValidadorTotal->>ValidadorTotal: procesar(contexto)
+        Note over ValidadorTotal: Calcula totales,<br/>prepara platillosConPrecio
+        
+        ValidadorTotal->>ValidadorTotal: contexto.totalCalculado = X
+        ValidadorTotal->>ValidadorTotal: contexto.platillosConPrecio = [...]
+        
+        ValidadorTotal-->>ValidadorTotal: {valido: true, errores: []}
+        
+        ValidadorTotal->>ValidadorMesa: validar(contexto)
+        activate ValidadorMesa
+        
+        ValidadorMesa->>ValidadorMesa: procesar(contexto)
+        Note over ValidadorMesa: Valida si es pedido de mesa<br/>y mesa disponible
+        
+        ValidadorMesa-->>ValidadorMesa: {valido: true, errores: []}
+        
+        ValidadorMesa->>ValidadorCliente: validar(contexto)
+        activate ValidadorCliente
+        
+        ValidadorCliente->>ValidadorCliente: procesar(contexto)
+        Note over ValidadorCliente: Valida cliente si existe
+        
+        ValidadorCliente-->>ValidadorCliente: {valido: true, errores: []}
+        
+        ValidadorCliente->>ValidadorDomicilio: validar(contexto)
+        activate ValidadorDomicilio
+        
+        ValidadorDomicilio->>ValidadorDomicilio: procesar(contexto)
+        Note over ValidadorDomicilio: Valida dirección y teléfono<br/>si es pedido a domicilio
+        
+        ValidadorDomicilio-->>ValidadorDomicilio: {valido: true, errores: []}
+        
+        deactivate ValidadorDomicilio
+        deactivate ValidadorCliente
+        deactivate ValidadorMesa
+        deactivate ValidadorTotal
+        deactivate ValidadorPlatillos
+        
+        CadenaValidacion-->>CadenaValidacion: {valido: true, contexto}
+        CadenaValidacion-->>PedidoService: {valido: true, contexto}
+        deactivate CadenaValidacion
+        
+        PedidoService->>PedidoService: Crear pedido con datos validados
+        PedidoService-->>Cliente: {success: true, data: pedido}
+        
+    else Error en validación
+        ValidadorPlatillos-->>ValidadorPlatillos: {valido: false, errores: [...]}
+        ValidadorPlatillos-->>CadenaValidacion: {valido: false, errores: [...]}
+        deactivate ValidadorPlatillos
+        
+        CadenaValidacion-->>PedidoService: {valido: false, errores: [...]}
+        deactivate CadenaValidacion
+        
+        PedidoService-->>Cliente: {success: false, error: "errores..."}
+    end
+    
+    deactivate PedidoService
+```
+
+#### Código Principal
+
+```typescript
+export abstract class ValidadorPedidoHandler {
+    protected siguiente?: ValidadorPedidoHandler;
+
+    public setSiguiente(handler: ValidadorPedidoHandler): ValidadorPedidoHandler {
+        this.siguiente = handler;
+        return handler;
+    }
+
+    public async validar(contexto: ContextoValidacion): Promise<ResultadoValidacion> {
+        const resultado = await this.procesar(contexto);
+        
+        if (!resultado.valido) {
+            return resultado;
+        }
+
+        if (this.siguiente) {
+            return await this.siguiente.validar(contexto);
+        }
+
+        return {
+            valido: contexto.errores.length === 0,
+            errores: contexto.errores
+        };
+    }
+
+    protected abstract procesar(contexto: ContextoValidacion): Promise<ResultadoValidacion>;
+}
+
+export class ValidadorPlatillosHandler extends ValidadorPedidoHandler {
+    private db: PrismaDatabaseService;
+
+    constructor() {
+        super();
+        this.db = PrismaDatabaseService.getInstance();
+    }
+
+    protected async procesar(contexto: ContextoValidacion): Promise<ResultadoValidacion> {
+        const { pedido } = contexto;
+
+        if (!pedido.platillos || pedido.platillos.length === 0) {
+            contexto.errores.push('El pedido debe tener al menos un platillo');
+            return { valido: false, errores: contexto.errores };
+        }
+
+        const menu = await this.db.obtenerPlatillos();
+
+        for (let i = 0; i < pedido.platillos.length; i++) {
+            const platilloRequest = pedido.platillos[i];
+            const platillo = menu.find((p: any) => p.id === platilloRequest.platilloId);
+
+            if (!platillo) {
+                contexto.errores.push(`El platillo con ID ${platilloRequest.platilloId} no existe`);
+                continue;
+            }
+
+            if (!platillo.activo) {
+                contexto.errores.push(`El platillo "${platillo.nombre}" no está disponible`);
+                continue;
+            }
+
+            if (platilloRequest.cantidad <= 0) {
+                contexto.errores.push(`La cantidad del platillo "${platillo.nombre}" debe ser mayor a 0`);
+                continue;
+            }
+
+            if (platilloRequest.cantidad > 100) {
+                contexto.errores.push(`La cantidad del platillo "${platillo.nombre}" no puede ser mayor a 100`);
+                continue;
+            }
+        }
+
+        if (contexto.errores.length > 0) {
+            return { valido: false, errores: contexto.errores };
+        }
+
+        return { valido: true, errores: [] };
+    }
+}
+
+export class CadenaValidacionPedido {
+    private cadena: ValidadorPedidoHandler;
+
+    constructor() {
+        const validadorPlatillos = new ValidadorPlatillosHandler();
+        const validadorTotal = new ValidadorTotalHandler();
+        const validadorMesa = new ValidadorMesaHandler();
+        const validadorCliente = new ValidadorClienteHandler();
+        const validadorDomicilio = new ValidadorDomicilioHandler();
+
+        this.cadena = validadorPlatillos;
+        validadorPlatillos.setSiguiente(validadorTotal);
+        validadorTotal.setSiguiente(validadorMesa);
+        validadorMesa.setSiguiente(validadorCliente);
+        validadorCliente.setSiguiente(validadorDomicilio);
+    }
+
+    public async validar(pedido: CrearPedidoRequest): Promise<ResultadoValidacionCompleto> {
+        const contexto: ContextoValidacion = {
+            pedido,
+            errores: []
+        };
+
+        const resultado = await this.cadena.validar(contexto);
+
+        return {
+            ...resultado,
+            contexto
+        };
+    }
+}
+```
+
+#### Ejemplo de Uso
+
+```typescript
+// En PedidoService
+export class PedidoService {
+    private cadenaValidacion: CadenaValidacionPedido;
+
+    constructor() {
+        this.cadenaValidacion = new CadenaValidacionPedido();
+    }
+
+    async crearPedido(datos: CrearPedidoRequest): Promise<ApiResponse<Pedido>> {
+        const resultadoValidacion = await this.cadenaValidacion.validar(datos);
+
+        if (!resultadoValidacion.valido) {
+            return {
+                success: false,
+                error: resultadoValidacion.errores.join('; ')
+            };
+        }
+
+        const contexto = resultadoValidacion.contexto;
+        
+        const pedidoData = {
+            clienteId: datos.clienteId,
+            mesaId: datos.mesaId,
+            tipo: datos.tipo,
+            estado: EstadoPedido.RECIBIDO,
+            total: contexto.totalCalculado || 0,
+            notas: datos.notas || '',
+            direccion: datos.direccion,
+            telefono: datos.telefono,
+            platillos: contexto.platillosConPrecio || []
+        };
+
+        const pedidoGuardado = await this.db.crearPedido(pedidoData);
+
+        return {
+            success: true,
+            data: pedidoGuardado as any,
+            message: 'Pedido creado exitosamente'
+        };
+    }
+}
+```
+
+#### Manejadores Implementados
+
+1. **ValidadorPlatillosHandler**: Valida que el pedido tenga platillos, que existan, estén activos y las cantidades sean válidas.
+2. **ValidadorTotalHandler**: Calcula el total del pedido y prepara los platillos con precios.
+3. **ValidadorMesaHandler**: Valida que la mesa esté disponible si es un pedido de mesa.
+4. **ValidadorClienteHandler**: Valida que el cliente exista y esté activo si se proporciona.
+5. **ValidadorDomicilioHandler**: Valida dirección y teléfono para pedidos a domicilio.
+
+#### ¿Por qué se usó?
+
+**Necesidad**: Implementar un sistema de validación flexible y extensible para pedidos que permita agregar nuevas reglas sin modificar código existente.
+
+**Problema que resuelve**:
+- Evita métodos de validación monolíticos con múltiples condicionales anidados
+- Permite reutilizar validadores en diferentes contextos
+- Facilita agregar o modificar reglas de validación sin afectar otras
+- Separa la responsabilidad de cada validación en clases independientes
+
+**Ventajas**:
+- **Extensibilidad**: Fácil agregar nuevos validadores sin modificar código existente
+- **Mantenibilidad**: Cada validador tiene una responsabilidad única y clara
+- **Flexibilidad**: Se puede reordenar o remover validadores de la cadena fácilmente
+- **Reutilización**: Los validadores pueden usarse en diferentes contextos
+- **Separación de responsabilidades**: Cada validador se enfoca en un aspecto específico
+
+**Caso de uso real**: Sistema de restaurante donde un pedido debe pasar por múltiples validaciones (platillos disponibles, mesa libre, cliente válido, datos de domicilio, etc.) antes de ser creado. Cada validación puede detener el proceso si encuentra un error, o continuar con la siguiente validación si todo está correcto.
+
+**Uso en el Sistema**:
+- Validación completa de pedidos antes de crearlos
+- Validación de datos de domicilio para entregas
+- Validación de disponibilidad de mesas
+- Validación de existencia y estado de clientes
+
+---
+
+## Diagrama de Despliegue
+
+### Despliegue en Railway
+
+El sistema está configurado para desplegarse en **Railway**, una plataforma de despliegue en la nube que ofrece integración con GitHub y despliegue automático.
+
+#### Arquitectura de Despliegue
+
+El diagrama de despliegue completo está disponible en [Diagramas.md](./Diagramas.md#diagrama-de-despliegue---railway) e incluye:
+
+- **Servicios**: Next.js Application, PostgreSQL Database, Servicios adicionales
+- **Red Privada**: Comunicación segura entre servicios
+- **Recursos**: Persistent Volumes, Logs & Monitoring
+- **Integraciones**: GitHub CI/CD, Factus API, DIAN
+
+#### Componentes Principales
+
+1. **Next.js Application (ObraBlanca-POS)**
+   - Tecnología: Node.js 20.x, Next.js 16.0
+   - Build: `npm run build`
+   - Start: `npm start`
+   - Variables de entorno configuradas en Railway
+
+2. **PostgreSQL Database**
+   - Versión: PostgreSQL 15
+   - Base de datos: `restaurant_db`
+   - Backups automáticos
+   - Acceso mediante Prisma ORM
+
+3. **CI/CD Pipeline**
+   - Integración con GitHub
+   - Despliegue automático en push
+   - Build y validación automáticos
+
+#### Configuración Requerida
+
+Para desplegar el sistema en Railway, se requiere:
+
+```bash
+# 1. Instalar Railway CLI
+npm i -g @railway/cli
+
+# 2. Autenticarse
+railway login
+
+# 3. Vincular proyecto (opcional)
+railway link
+
+# 4. Configurar variables de entorno
+railway variables set DATABASE_URL=...
+railway variables set FACTUS_CLIENT_ID=...
+railway variables set FACTUS_CLIENT_SECRET=...
+```
+
+#### Variables de Entorno
+
+Las siguientes variables deben configurarse en Railway:
+
+- `DATABASE_URL`: Conexión a PostgreSQL
+- `NEXTAUTH_SECRET`: Secret para autenticación
+- `FACTUS_CLIENT_ID`: Client ID de Factus API
+- `FACTUS_CLIENT_SECRET`: Client Secret de Factus API
+- `FACTUS_API_URL`: URL de la API de Factus
+- `NODE_ENV`: production
+
+Para más detalles sobre el diagrama de despliegue, consulte [Diagramas.md](./Diagramas.md#diagrama-de-despliegue---railway).
 
 ---
 

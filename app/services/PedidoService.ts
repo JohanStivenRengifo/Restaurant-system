@@ -4,40 +4,39 @@
 
 import { Pedido, CrearPedidoRequest, ApiResponse, PedidoPlatillo, EstadoPedido, TipoPedido, Platillo } from '@/app/types';
 import PrismaDatabaseService from './PrismaDatabaseService';
+import { CadenaValidacionPedido } from '@/app/patterns/behavioral/chainOfResponsibility/CadenaValidacionPedido';
 
 export class PedidoService {
     private db: PrismaDatabaseService;
+    private cadenaValidacion: CadenaValidacionPedido;
 
     constructor() {
         this.db = PrismaDatabaseService.getInstance();
+        this.cadenaValidacion = new CadenaValidacionPedido();
     }
 
     /**
      * Crear un nuevo pedido
+     * Utiliza el patrón Chain of Responsibility para validar el pedido
      */
     async crearPedido(datos: CrearPedidoRequest): Promise<ApiResponse<Pedido>> {
         try {
-            // Calcular el total del pedido obteniendo los precios de los platillos
-            let total = 0;
-            let platillosConPrecio: any[] = [];
+            const resultadoValidacion = await this.cadenaValidacion.validar(datos);
 
-            if (datos.platillos && datos.platillos.length > 0) {
-                const menu = await this.db.obtenerPlatillos();
+            if (!resultadoValidacion.valido) {
+                return {
+                    success: false,
+                    error: resultadoValidacion.errores.join('; ')
+                };
+            }
 
-                platillosConPrecio = datos.platillos.map(platilloRequest => {
-                    const platillo = menu.find((p: any) => p.id === platilloRequest.platilloId);
-                    const precio = platillo ? platillo.precio : 0;
-                    total += precio * platilloRequest.cantidad;
-
-                    return {
-                        platilloId: platilloRequest.platilloId,
-                        cantidad: platilloRequest.cantidad,
-                        precioUnitario: precio,
-                        precio: precio,
-                        personalizacion: platilloRequest.personalizacion || [],
-                        notas: platilloRequest.notas || ''
-                    };
-                });
+            const contexto = resultadoValidacion.contexto;
+            
+            if (!contexto) {
+                return {
+                    success: false,
+                    error: 'Error en la validación del pedido'
+                };
             }
 
             const pedidoData = {
@@ -45,11 +44,11 @@ export class PedidoService {
                 mesaId: datos.mesaId,
                 tipo: datos.tipo,
                 estado: EstadoPedido.RECIBIDO,
-                total: total,
+                total: contexto.totalCalculado || 0,
                 notas: datos.notas || '',
                 direccion: datos.direccion,
                 telefono: datos.telefono,
-                platillos: platillosConPrecio
+                platillos: contexto.platillosConPrecio || []
             };
 
             const pedidoGuardado = await this.db.crearPedido(pedidoData);
