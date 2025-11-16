@@ -17,6 +17,7 @@
    - [Chain of Responsibility](#chain-of-responsibility)
 4. [Diagrama de Despliegue](#diagrama-de-despliegue)
    - [Despliegue en Railway](#despliegue-en-railway)
+   - [CI/CD Pipeline](#cicd-pipeline)
 5. [Facturación Electrónica](#facturación-electrónica)
    - [Integración con Factus API](#integración-con-factus-api)
    - [Patrones Aplicados](#patrones-aplicados)
@@ -2034,6 +2035,154 @@ Las siguientes variables deben configurarse en Railway:
 - `NODE_ENV`: production
 
 Para más detalles sobre el diagrama de despliegue, consulte [Diagramas.md](./Diagramas.md#diagrama-de-despliegue---railway).
+
+---
+
+### CI/CD Pipeline
+
+El sistema implementa un pipeline de **CI/CD (Continuous Integration / Continuous Deployment)** utilizando **GitHub Actions** para automatizar la validación, construcción y despliegue del código.
+
+#### Arquitectura del Pipeline
+
+El pipeline está dividido en dos workflows principales:
+
+1. **CI (Continuous Integration)**: Validación y construcción automática
+2. **CD (Continuous Deployment)**: Despliegue automático a Railway
+
+#### Workflow de CI
+
+El workflow de CI se ejecuta en cada push y pull request y realiza las siguientes validaciones:
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+jobs:
+  lint:
+    name: Lint
+    # Ejecuta ESLint para validar código
+
+  type-check:
+    name: Type Check
+    # Valida tipos TypeScript y genera Prisma Client
+
+  build:
+    name: Build
+    needs: [lint, type-check]
+    # Construye la aplicación Next.js
+```
+
+**Jobs del Pipeline CI:**
+
+1. **Lint Job**
+   - Verifica que el código cumpla con las reglas de ESLint
+   - Usa la configuración de `eslint.config.mjs`
+   - Ejecuta `pnpm lint`
+
+2. **Type Check Job**
+   - Valida tipos TypeScript con `tsc --noEmit`
+   - Genera Prisma Client con `pnpm db:generate`
+   - Ejecuta `pnpm type-check`
+
+3. **Build Job**
+   - Depende de que lint y type-check pasen exitosamente
+   - Genera Prisma Client
+   - Construye la aplicación Next.js con `pnpm build`
+   - Valida que el build sea exitoso
+
+#### Workflow de CD
+
+El workflow de CD se ejecuta automáticamente cuando se hace push a las ramas `main` o `master`, o manualmente mediante `workflow_dispatch`:
+
+```yaml
+name: Deploy to Railway
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Railway
+    # Instala Railway CLI y despliega
+```
+
+**Proceso de Deployment:**
+
+1. Checkout del código
+2. Setup de pnpm y Node.js
+3. Instalación de dependencias
+4. Instalación de Railway CLI
+5. Deployment a Railway usando `railway up`
+
+#### Configuración Requerida
+
+Para que el pipeline funcione correctamente, se debe configurar el siguiente secret en GitHub:
+
+**Secret de GitHub:**
+- `RAILWAY_TOKEN`: Token de autenticación de Railway para deployment
+
+**Pasos para configurar:**
+
+1. Generar token en Railway:
+   ```bash
+   railway login
+   railway tokens create --name github-ci
+   ```
+
+2. Agregar secret en GitHub:
+   - Ir a Settings → Secrets and variables → Actions
+   - Crear nuevo secret: `RAILWAY_TOKEN`
+   - Pegar el token generado
+
+#### Archivos del Pipeline
+
+Los workflows están ubicados en:
+
+- `.github/workflows/ci.yml` - Workflow de Continuous Integration
+- `.github/workflows/deploy.yml` - Workflow de Continuous Deployment
+
+#### Flujo Completo
+
+```mermaid
+graph LR
+    A[Push a GitHub] --> B{¿Rama main/master?}
+    B -->|No| C[Ejecutar CI]
+    B -->|Sí| C
+    C --> D[Lint]
+    C --> E[Type Check]
+    C --> F[Build]
+    D --> G{Todos pasaron?}
+    E --> G
+    F --> G
+    G -->|No| H[❌ Falla CI]
+    G -->|Sí y en main/master| I[Ejecutar CD]
+    I --> J[Deploy a Railway]
+    J --> K[✅ Aplicación desplegada]
+```
+
+#### Ventajas del Pipeline
+
+- **Validación Automática**: El código se valida en cada push
+- **Detección Temprana de Errores**: Problemas detectados antes del merge
+- **Despliegue Automático**: No requiere intervención manual para deployment
+- **Consistencia**: Mismo proceso de build en desarrollo y producción
+- **Trazabilidad**: Historial completo de builds y deployments en GitHub Actions
+
+#### Scripts NPM Utilizados
+
+- `pnpm lint`: Ejecuta ESLint
+- `pnpm type-check`: Valida tipos TypeScript
+- `pnpm build`: Construye la aplicación
+- `pnpm db:generate`: Genera Prisma Client
 
 ---
 

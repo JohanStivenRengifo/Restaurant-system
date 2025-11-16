@@ -8,9 +8,9 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirigir a la página de pruebas después de un breve delay
+    // Redirigir al dashboard después de un breve delay
     const timer = setTimeout(() => {
-      router.push('/test');
+      router.push('/dashboard');
     }, 1000);
 
     return () => clearTimeout(timer);
@@ -27,14 +27,14 @@ export default function Home() {
             Implementado con TypeScript, Next.js y 9 Patrones de Diseño
           </p>
           <p className="text-lg text-gray-500">
-            Verificando funcionalidad del sistema...
+            Cargando dashboard...
           </p>
         </div>
 
         <LoadingSpinner size="lg" text="Cargando sistema..." />
 
         <div className="mt-8 text-sm text-gray-500">
-          <p>Redirigiendo a las pruebas del sistema...</p>
+          <p>Redirigiendo al dashboard...</p>
         </div>
       </div>
     </div>
