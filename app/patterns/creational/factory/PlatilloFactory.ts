@@ -177,7 +177,7 @@ export class PedidoDomicilioFactory extends PedidoFactory {
 
 export class PedidoMesa implements Pedido {
     id = Math.random().toString(36).substr(2, 9)
-    tipo: 'MESA' = 'MESA'
+    tipo = 'MESA' as const
     estado: 'RECIBIDO' | 'PREPARANDO' | 'LISTO' | 'ENTREGADO' = 'RECIBIDO'
     platillos: Platillo[] = []
     total = 0
@@ -194,7 +194,7 @@ export class PedidoMesa implements Pedido {
 
 export class PedidoParaLlevar implements Pedido {
     id = Math.random().toString(36).substr(2, 9)
-    tipo: 'PARA_LLEVAR' = 'PARA_LLEVAR'
+    tipo = 'PARA_LLEVAR' as const
     estado: 'RECIBIDO' | 'PREPARANDO' | 'LISTO' | 'ENTREGADO' = 'RECIBIDO'
     platillos: Platillo[] = []
     total = 0
@@ -211,7 +211,7 @@ export class PedidoParaLlevar implements Pedido {
 
 export class PedidoDomicilio implements Pedido {
     id = Math.random().toString(36).substr(2, 9)
-    tipo: 'DOMICILIO' = 'DOMICILIO'
+    tipo = 'DOMICILIO' as const
     estado: 'RECIBIDO' | 'PREPARANDO' | 'LISTO' | 'ENTREGADO' = 'RECIBIDO'
     platillos: Platillo[] = []
     total = 0
