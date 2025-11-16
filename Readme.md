@@ -184,15 +184,13 @@ sequenceDiagram
     Cliente->>EntradaFactory: procesarPlatillo()
     activate EntradaFactory
     EntradaFactory->>EntradaFactory: crearPlatillo()
-    activate EntradaFactory
-    EntradaFactory-->>Cliente: new Entrada()
-    deactivate EntradaFactory
-    EntradaFactory->>Entrada: Crear instancia
+    EntradaFactory->>Entrada: new Entrada()
+    activate Entrada
+    Entrada-->>EntradaFactory: Instancia creada
+    deactivate Entrada
+    EntradaFactory->>EntradaFactory: console.log("Creando Entrada: [nombre]")
     EntradaFactory-->>Cliente: Retorna platillo (Entrada)
     deactivate EntradaFactory
-    Cliente->>EntradaFactory: console.log("Creando Entrada: [nombre]")
-
-
 ```
 
 **Código Principal**:
@@ -454,15 +452,16 @@ sequenceDiagram
     Cliente->>Platillo: crearVariacion(nombreVariacion, modificaciones)
     activate Platillo
     Platillo->>Platillo: clonar()
-    activate Platillo
-    Platillo-->>Platillo: return nuevo objeto (Variacion)
-    deactivate Platillo
-
+    Platillo->>Variacion: Crea nuevo objeto clonado
+    activate Variacion
+    Variacion-->>Platillo: Objeto clonado
+    deactivate Variacion
     Platillo->>Variacion: Asigna nombre y modificaciones
-    Variacion-->>Platillo: Retorna objeto modificado
+    activate Variacion
+    Variacion-->>Platillo: Objeto modificado
+    deactivate Variacion
     Platillo-->>Cliente: Retorna nueva variación del platillo
     deactivate Platillo
-
 ```
 
 **Código Principal**:
@@ -1242,10 +1241,8 @@ sequenceDiagram
     activate Reporte
     
     Reporte->>ReporteVentas: obtenerDatos()
-    activate ReporteVentas
     Note over ReporteVentas: Retorna array de<br/>datos de ventas
     ReporteVentas-->>Reporte: datos[]
-    deactivate ReporteVentas
     
     Reporte->>FormatoReporte: exportar(datos)
     activate FormatoReporte
@@ -1716,7 +1713,6 @@ sequenceDiagram
     
     alt Validación exitosa
         ValidadorPlatillos-->>ValidadorPlatillos: {valido: true, errores: []}
-        
         ValidadorPlatillos->>ValidadorTotal: validar(contexto)
         activate ValidadorTotal
         
@@ -1725,7 +1721,6 @@ sequenceDiagram
         
         ValidadorTotal->>ValidadorTotal: contexto.totalCalculado = X
         ValidadorTotal->>ValidadorTotal: contexto.platillosConPrecio = [...]
-        
         ValidadorTotal-->>ValidadorTotal: {valido: true, errores: []}
         
         ValidadorTotal->>ValidadorMesa: validar(contexto)
@@ -1733,7 +1728,6 @@ sequenceDiagram
         
         ValidadorMesa->>ValidadorMesa: procesar(contexto)
         Note over ValidadorMesa: Valida si es pedido de mesa<br/>y mesa disponible
-        
         ValidadorMesa-->>ValidadorMesa: {valido: true, errores: []}
         
         ValidadorMesa->>ValidadorCliente: validar(contexto)
@@ -1741,7 +1735,6 @@ sequenceDiagram
         
         ValidadorCliente->>ValidadorCliente: procesar(contexto)
         Note over ValidadorCliente: Valida cliente si existe
-        
         ValidadorCliente-->>ValidadorCliente: {valido: true, errores: []}
         
         ValidadorCliente->>ValidadorDomicilio: validar(contexto)
@@ -1749,21 +1742,29 @@ sequenceDiagram
         
         ValidadorDomicilio->>ValidadorDomicilio: procesar(contexto)
         Note over ValidadorDomicilio: Valida dirección y teléfono<br/>si es pedido a domicilio
-        
         ValidadorDomicilio-->>ValidadorDomicilio: {valido: true, errores: []}
-        
+        ValidadorDomicilio-->>ValidadorCliente: {valido: true, errores: []}
         deactivate ValidadorDomicilio
+        
+        ValidadorCliente-->>ValidadorMesa: {valido: true, errores: []}
         deactivate ValidadorCliente
+        
+        ValidadorMesa-->>ValidadorTotal: {valido: true, errores: []}
         deactivate ValidadorMesa
+        
+        ValidadorTotal-->>ValidadorPlatillos: {valido: true, errores: []}
         deactivate ValidadorTotal
+        
+        ValidadorPlatillos-->>CadenaValidacion: {valido: true, errores: []}
         deactivate ValidadorPlatillos
         
-        CadenaValidacion-->>CadenaValidacion: {valido: true, contexto}
+        CadenaValidacion->>CadenaValidacion: {valido: true, contexto}
         CadenaValidacion-->>PedidoService: {valido: true, contexto}
         deactivate CadenaValidacion
         
         PedidoService->>PedidoService: Crear pedido con datos validados
         PedidoService-->>Cliente: {success: true, data: pedido}
+        deactivate PedidoService
         
     else Error en validación
         ValidadorPlatillos-->>ValidadorPlatillos: {valido: false, errores: [...]}
@@ -1774,9 +1775,8 @@ sequenceDiagram
         deactivate CadenaValidacion
         
         PedidoService-->>Cliente: {success: false, error: "errores..."}
+        deactivate PedidoService
     end
-    
-    deactivate PedidoService
 ```
 
 #### Código Principal

@@ -2234,7 +2234,7 @@ graph TB
         subgraph "Proyecto: repository-global"
             subgraph "Environment: Production"
                 subgraph "Service: ObraBlanca-POS"
-                    NextJSApp["Next.js Application<br/>- Node.js 20.x<br/>- Next.js 16.0<br/>- Puerto: Dinámico<br/>- Build: npm run build<br/>- Start: npm start"]
+                    NextJSApp["Next.js Application<br/>- Node.js 20.x<br/>- Next.js 18.0<br/>- Puerto: Dinámico<br/>- Build: npm run build<br/>- Start: npm start"]
                     
                     EnvVars["Variables de Entorno<br/>- DATABASE_URL<br/>- NEXTAUTH_SECRET<br/>- FACTUS_CLIENT_ID<br/>- FACTUS_CLIENT_SECRET<br/>- FACTUS_API_URL<br/>- PORT"]
                 end
