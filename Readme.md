@@ -1711,38 +1711,32 @@ sequenceDiagram
     ValidadorPlatillos->>ValidadorPlatillos: procesar(contexto)
     Note over ValidadorPlatillos: Valida platillos existentes,<br/>activos, cantidades
     
-    alt Validación exitosa
-        ValidadorPlatillos-->>ValidadorPlatillos: {valido: true, errores: []}
+    alt Validación de platillos exitosa
         ValidadorPlatillos->>ValidadorTotal: validar(contexto)
         activate ValidadorTotal
         
         ValidadorTotal->>ValidadorTotal: procesar(contexto)
         Note over ValidadorTotal: Calcula totales,<br/>prepara platillosConPrecio
-        
         ValidadorTotal->>ValidadorTotal: contexto.totalCalculado = X
         ValidadorTotal->>ValidadorTotal: contexto.platillosConPrecio = [...]
-        ValidadorTotal-->>ValidadorTotal: {valido: true, errores: []}
         
         ValidadorTotal->>ValidadorMesa: validar(contexto)
         activate ValidadorMesa
         
         ValidadorMesa->>ValidadorMesa: procesar(contexto)
         Note over ValidadorMesa: Valida si es pedido de mesa<br/>y mesa disponible
-        ValidadorMesa-->>ValidadorMesa: {valido: true, errores: []}
         
         ValidadorMesa->>ValidadorCliente: validar(contexto)
         activate ValidadorCliente
         
         ValidadorCliente->>ValidadorCliente: procesar(contexto)
         Note over ValidadorCliente: Valida cliente si existe
-        ValidadorCliente-->>ValidadorCliente: {valido: true, errores: []}
         
         ValidadorCliente->>ValidadorDomicilio: validar(contexto)
         activate ValidadorDomicilio
         
         ValidadorDomicilio->>ValidadorDomicilio: procesar(contexto)
         Note over ValidadorDomicilio: Valida dirección y teléfono<br/>si es pedido a domicilio
-        ValidadorDomicilio-->>ValidadorDomicilio: {valido: true, errores: []}
         ValidadorDomicilio-->>ValidadorCliente: {valido: true, errores: []}
         deactivate ValidadorDomicilio
         
@@ -1766,8 +1760,7 @@ sequenceDiagram
         PedidoService-->>Cliente: {success: true, data: pedido}
         deactivate PedidoService
         
-    else Error en validación
-        ValidadorPlatillos-->>ValidadorPlatillos: {valido: false, errores: [...]}
+    else Error en validación de platillos
         ValidadorPlatillos-->>CadenaValidacion: {valido: false, errores: [...]}
         deactivate ValidadorPlatillos
         
