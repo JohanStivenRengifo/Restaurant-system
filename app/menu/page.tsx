@@ -26,15 +26,23 @@ interface Platillo {
 interface Categoria {
   id: string;
   nombre: string;
-  descripcion: string;
-  orden: number;
-  activa: boolean;
+  descripcion?: string;
+  orden?: number;
+  activa?: boolean;
   platillos: Platillo[];
+}
+
+interface CategoriaDB {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  activa: boolean;
 }
 
 export default function MenuPage() {
   const router = useRouter();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [categoriasDB, setCategoriasDB] = useState<CategoriaDB[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -47,48 +55,38 @@ export default function MenuPage() {
   useEffect(() => {
     cargarCategorias();
   }, []);
-
   const cargarCategorias = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/menu');
-      const data = await response.json();
 
-      if (data.success) {
-        // Simular categorías con los platillos usando los IDs reales de PostgreSQL
-        const categoriasSimuladas: Categoria[] = [
-          {
-            id: 'cat-2',
-            nombre: 'Platos Principales',
-            descripcion: 'Nuestros platos estrella',
-            orden: 1,
-            activa: true,
-            platillos: data.data.filter(
-              (p: Platillo) => p.categoriaId === 'cat-2'
+      // Cargar platillos y categorías en paralelo
+      const [platillosResponse, categoriasResponse] = await Promise.all([
+        fetch('/api/menu'),
+        fetch('/api/categorias'),
+      ]);
+
+      const platillosData = await platillosResponse.json();
+      const categoriasData = await categoriasResponse.json();
+
+      if (platillosData.success && categoriasData.success) {
+        const platillos = platillosData.data;
+        const categoriasFromDB = categoriasData.data;
+
+        // Agrupar platillos por categoría
+        const categoriasConPlatillos: Categoria[] = categoriasFromDB.map(
+          (cat: CategoriaDB) => ({
+            id: cat.id,
+            nombre: cat.nombre,
+            descripcion: cat.descripcion || '',
+            activa: cat.activa,
+            platillos: platillos.filter(
+              (p: Platillo) => p.categoriaId === cat.id
             ),
-          },
-          {
-            id: 'cat-1',
-            nombre: 'Entradas',
-            descripcion: 'Para comenzar tu comida',
-            orden: 2,
-            activa: true,
-            platillos: data.data.filter(
-              (p: Platillo) => p.categoriaId === 'cat-1'
-            ),
-          },
-          {
-            id: 'cat-3',
-            nombre: 'Bebidas',
-            descripcion: 'Bebidas y refrescos',
-            orden: 3,
-            activa: true,
-            platillos: data.data.filter(
-              (p: Platillo) => p.categoriaId === 'cat-3'
-            ),
-          },
-        ];
-        setCategorias(categoriasSimuladas);
+          })
+        );
+
+        setCategorias(categoriasConPlatillos);
+        setCategoriasDB(categoriasFromDB);
       }
     } catch (err) {
       setError('Error al cargar el menú');
@@ -455,9 +453,11 @@ export default function MenuPage() {
                         required
                       >
                         <option value="">Seleccionar categoría...</option>
-                        <option value="cat-2">Platos Principales</option>
-                        <option value="cat-1">Entradas</option>
-                        <option value="cat-3">Bebidas</option>
+                        {categoriasDB.map((categoria) => (
+                          <option key={categoria.id} value={categoria.id}>
+                            {categoria.nombre}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
