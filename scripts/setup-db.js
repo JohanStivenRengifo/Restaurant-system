@@ -17,6 +17,26 @@ dbSetup.on('error', (error) => {
 dbSetup.on('exit', (code) => {
   if (code === 0) {
     console.log('✅ Base de datos configurada correctamente');
+
+    // Ejecutar seed después de configurar la base de datos
+    console.log('🌱 Ejecutando seed...');
+    const seed = spawn('node', ['scripts/seed.js'], {
+      stdio: 'inherit',
+      env: process.env,
+      shell: true
+    });
+
+    seed.on('error', (error) => {
+      console.error('❌ Error ejecutando seed:', error.message);
+    });
+
+    seed.on('exit', (seedCode) => {
+      if (seedCode === 0) {
+        console.log('✅ Seed completado correctamente');
+      } else {
+        console.log('⚠️  Seed falló, pero la aplicación continuará');
+      }
+    });
   } else {
     console.log('⚠️  Setup de base de datos falló, pero la aplicación continuará');
     console.log('   Ejecuta manualmente: npx prisma db push');

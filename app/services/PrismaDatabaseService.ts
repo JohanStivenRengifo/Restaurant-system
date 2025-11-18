@@ -157,6 +157,15 @@ class PrismaDatabaseService {
         throw new Error('Faltan campos requeridos: nombre, precio o categoriaId')
       }
 
+      // Verificar que la categoría existe
+      const categoriaExiste = await this.prisma.categoria.findUnique({
+        where: { id: datos.categoriaId }
+      });
+
+      if (!categoriaExiste) {
+        throw new Error(`La categoría con ID "${datos.categoriaId}" no existe. Por favor, selecciona una categoría válida.`)
+      }
+
       const platillo = await this.prisma.platillo.create({
         data: {
           nombre: datos.nombre,
@@ -175,8 +184,14 @@ class PrismaDatabaseService {
 
       console.log('PrismaDatabaseService.crearPlatillo - Platillo creado con éxito:', platillo.id)
       return platillo
-    } catch (error) {
+    } catch (error: any) {
       console.error('PrismaDatabaseService.crearPlatillo - Error de Prisma:', error)
+
+      // Manejo específico de errores de Prisma
+      if (error.code === 'P2003') {
+        throw new Error(`La categoría seleccionada no existe. Por favor, verifica que la categoría sea válida.`)
+      }
+
       throw error
     }
   }

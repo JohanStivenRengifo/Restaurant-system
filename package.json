@@ -10,7 +10,7 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "migrate": "tsx scripts/migrate-data.ts",
-    "seed": "tsx scripts/insert-sample-data.ts",
+    "seed": "node scripts/seed.js",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
