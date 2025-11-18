@@ -29,12 +29,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
+        console.log('POST /api/menu - Body recibido:', JSON.stringify(body, null, 2))
+
         const result = await menuService.crearPlatillo(body)
+        console.log('POST /api/menu - Resultado:', JSON.stringify(result, null, 2))
+
         return NextResponse.json(result, { status: result.success ? 201 : 400 })
     } catch (error) {
+        console.error('POST /api/menu - Error:', error)
         return NextResponse.json({
             success: false,
-            error: 'Error al procesar la solicitud'
+            error: error instanceof Error ? error.message : 'Error al procesar la solicitud'
         }, { status: 400 })
     }
 }

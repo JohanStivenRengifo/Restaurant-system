@@ -46,17 +46,19 @@ export class MenuService {
 
     async crearPlatillo(datos: CrearPlatilloRequest): Promise<ApiResponse<Platillo>> {
         try {
+            console.log('MenuService.crearPlatillo - Datos recibidos:', JSON.stringify(datos, null, 2))
             const nuevoPlatillo = await this.db.crearPlatillo(datos);
+            console.log('MenuService.crearPlatillo - Platillo creado:', JSON.stringify(nuevoPlatillo, null, 2))
             return {
                 success: true,
                 data: nuevoPlatillo as any,
                 message: 'Platillo creado exitosamente'
             };
         } catch (error) {
-            console.error('Error creando platillo:', error);
+            console.error('MenuService.crearPlatillo - Error:', error);
             return {
                 success: false,
-                error: 'Error interno del servidor al crear platillo'
+                error: error instanceof Error ? error.message : 'Error interno del servidor al crear platillo'
             };
         }
     }

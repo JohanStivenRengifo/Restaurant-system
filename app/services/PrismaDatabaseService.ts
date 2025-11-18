@@ -149,21 +149,36 @@ class PrismaDatabaseService {
   }
 
   async crearPlatillo(datos: any) {
-    return await this.prisma.platillo.create({
-      data: {
-        nombre: datos.nombre,
-        descripcion: datos.descripcion,
-        precio: datos.precio,
-        categoriaId: datos.categoriaId,
-        alergenos: datos.alergenos || [],
-        activo: datos.activo !== undefined ? datos.activo : true,
-        imagen: datos.imagen,
-        tiempoPrep: datos.tiempoPrep || 15,
-      },
-      include: {
-        categoria: true
+    try {
+      console.log('PrismaDatabaseService.crearPlatillo - Datos:', JSON.stringify(datos, null, 2))
+
+      // Validación básica
+      if (!datos.nombre || !datos.precio || !datos.categoriaId) {
+        throw new Error('Faltan campos requeridos: nombre, precio o categoriaId')
       }
-    });
+
+      const platillo = await this.prisma.platillo.create({
+        data: {
+          nombre: datos.nombre,
+          descripcion: datos.descripcion,
+          precio: datos.precio,
+          categoriaId: datos.categoriaId,
+          alergenos: datos.alergenos || [],
+          activo: datos.activo !== undefined ? datos.activo : true,
+          imagen: datos.imagen,
+          tiempoPrep: datos.tiempoPrep || 15,
+        },
+        include: {
+          categoria: true
+        }
+      });
+
+      console.log('PrismaDatabaseService.crearPlatillo - Platillo creado con éxito:', platillo.id)
+      return platillo
+    } catch (error) {
+      console.error('PrismaDatabaseService.crearPlatillo - Error de Prisma:', error)
+      throw error
+    }
   }
 
   async actualizarPlatillo(id: string, datos: any) {
