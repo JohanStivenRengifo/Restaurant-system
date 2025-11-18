@@ -12,7 +12,7 @@
     "migrate": "tsx scripts/migrate-data.ts",
     "seed": "node scripts/seed.js",
     "db:push": "prisma db push",
-    "db:generate": "node scripts/generate-prisma.js",
+    "db:generate": "bash scripts/generate-prisma.sh || node scripts/generate-prisma.js",
     "db:studio": "prisma studio",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",

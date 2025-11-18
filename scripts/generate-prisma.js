@@ -1,21 +1,25 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 
 console.log('🔄 Generando Prisma Client...');
 
-try {
-    // Establecer la variable de entorno antes de ejecutar prisma generate
-    execSync('prisma generate', {
-        stdio: 'inherit',
-        env: {
-            ...process.env,
-            PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: '1'
-        }
-    });
+// Establecer la variable de entorno ANTES de ejecutar el comando
+process.env.PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING = '1';
 
+const result = spawnSync('npx', ['prisma', 'generate'], {
+    stdio: 'inherit',
+    shell: true,
+    env: {
+        ...process.env,
+        PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: '1'
+    }
+});
+
+if (result.status === 0) {
     console.log('✅ Prisma Client generado exitosamente');
-} catch (error) {
-    console.error('❌ Error generando Prisma Client:', error.message);
-    process.exit(1);
+    process.exit(0);
+} else {
+    console.error('❌ Error generando Prisma Client');
+    process.exit(result.status || 1);
 }
