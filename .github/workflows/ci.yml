@@ -17,7 +17,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,6 +27,8 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: 1
 
       - name: Run ESLint
         run: pnpm lint --max-warnings=1000
@@ -51,9 +53,13 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: 1
 
       - name: Generate Prisma Client
         run: pnpm db:generate
+        env:
+          PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: 1
 
       - name: Type check
         run: pnpm type-check
@@ -79,15 +85,17 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: 1
 
       - name: Generate Prisma Client
         run: pnpm db:generate
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/restaurant_db
+          PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: 1
 
       - name: Build application
         run: pnpm build
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/restaurant_db
           NODE_ENV: production
-
