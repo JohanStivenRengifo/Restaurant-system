@@ -99,3 +99,4 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/restaurant_db
           NODE_ENV: production
+          PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: 1
